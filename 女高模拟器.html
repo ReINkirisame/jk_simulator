@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>女高模拟器</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f2ee;color:#403c38;font-family:"Microsoft YaHei","PingFang SC",sans-serif}
+.wrap{max-width:940px;margin:auto;padding:28px 18px 60px}
+.card{background:#fff;border:1px solid #e4ddd5;border-radius:12px;padding:20px;margin-top:15px}
+h1{margin:0;font-size:30px;letter-spacing:4px;font-weight:600}
+h2{font-size:17px;margin:0 0 14px}
+.muted{font-size:12px;color:#958c83;margin-top:7px}
+.notice{font-size:12px;color:#7f766d;line-height:1.8}
+.hidden{display:none!important}
+.head{border-bottom:1px solid #ddd5cc;padding-bottom:15px;display:flex;justify-content:space-between;align-items:end}
+.month{font-size:14px;color:#756d65}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.stat{border:1px solid #e7e0d8;border-radius:8px;padding:12px}
+.stat small{display:block;color:#978e85}.stat b{font-size:23px;display:block;margin-top:4px}
+.smalltitle{font-size:12px;color:#8d847b;margin-top:15px}
+.buffs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.buff{padding:6px 11px;background:#eee8e1;border-radius:15px;font-size:12px}
+.grid{display:grid;grid-template-columns:1.18fr .82fr;gap:15px}
+.scene{background:#faf8f5;border-radius:8px;padding:16px;min-height:205px}
+.tag{font-size:11px;color:#a18d78}
+.scene h3{margin:8px 0;font-size:19px}
+.scene p{font-size:13px;line-height:1.9;margin:0;color:#655f59;white-space:pre-line}
+.choices{display:grid;gap:9px;margin-top:12px}
+button{font-family:inherit;font-size:13px;border:1px solid #d8d0c7;background:#fff;color:#45413d;border-radius:7px;padding:11px 13px;cursor:pointer;text-align:left}
+button:hover{background:#f6f1eb}
+.primary{background:#4d4945;color:#fff;border-color:#4d4945;text-align:center}
+.primary:hover{background:#3d3935}
+button:disabled{opacity:.45;cursor:not-allowed}
+.log{height:350px;overflow:auto;background:#faf8f5;border-radius:7px;padding:11px;font-size:12px;line-height:1.7}
+.log p{margin:0 0 7px}
+.rollgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+.trait{border:1px solid #ddd5cc;border-radius:8px;padding:12px;cursor:pointer;background:#fff}
+.trait.selected{border-color:#5a554f;background:#f1ece6}
+.trait b{font-size:14px}.trait span{display:block;font-size:11px;color:#8b827a;margin-top:4px}
+.points{font-size:14px;margin:12px 0}.inputs{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.inputs label{font-size:12px;color:#7f766d}.inputs input{width:100%;margin-top:5px;padding:9px;border:1px solid #ddd5cc;border-radius:6px;font-size:16px}
+.npc-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+.npc{border:1px solid #e5ddd5;border-radius:8px;padding:11px;background:#faf8f5}
+.npc b{font-size:13px}.npc span{display:block;font-size:11px;color:#827970;margin-top:4px;line-height:1.6}
+@media(max-width:680px){.grid{grid-template-columns:1fr}.stats,.inputs{grid-template-columns:repeat(2,1fr)}.rollgrid,.npc-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<section id="setup">
+  <div class="card">
+    <h1>女高模拟器</h1>
+    <h2>先给她起个名字</h2>
+    <input id="playerName" type="text" maxlength="12" placeholder="输入名字" style="width:100%;padding:10px;border:1px solid #ddd5cc;border-radius:6px;font-size:14px;margin-bottom:16px">
+
+    <h2>本局抽到的10个特质</h2>
+    <div id="traitPool" class="rollgrid"></div>
+
+    <div class="points">可分配点数：<b id="remain">40</b> / 40</div>
+    <div class="inputs">
+      <label>魅力<input id="iCharm" type="number" min="0" max="40" value="10"></label>
+      <label>智力<input id="iIntel" type="number" min="0" max="40" value="10"></label>
+      <label>健康<input id="iHealth" type="number" min="0" max="40" value="10"></label>
+      <label>家境<input id="iMoney" type="number" min="0" max="40" value="10"></label>
+    </div>
+
+    <div style="margin-top:14px">
+      <button class="primary" style="width:100%;text-align:center" onclick="startGame()">开始高中生活</button>
+    </div>
+  </div>
+</section>
+
+<section id="game" class="hidden">
+  <div class="head">
+    <div><h1>女高模拟器</h1><div class="muted">「<span id="playerNameLabel"></span>」</div></div>
+    <div class="month" id="monthLabel"></div>
+  </div>
+
+  <div class="card">
+    <div class="stats">
+      <div class="stat"><small>魅力</small><b id="charm">0</b></div>
+      <div class="stat"><small>智力</small><b id="intel">0</b></div>
+      <div class="stat"><small>健康</small><b id="health">0</b></div>
+      <div class="stat"><small>家境</small><b id="money">0</b></div>
+    </div>
+    <div class="smalltitle">特质 / 兴趣</div>
+    <div class="buffs" id="buffs"></div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2 id="sectionTitle">本月事件</h2>
+      <div class="scene">
+        <div class="tag" id="tag"></div>
+        <h3 id="title"></h3>
+        <p id="text"></p>
+      </div>
+      <div class="choices" id="choices"></div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>高中生活记录</h2>
+        <div class="log" id="log"></div>
+        <div class="smalltitle">认识的人</div>
+        <div id="npcList" class="npc-grid" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="result" class="hidden">
+  <div class="card">
+    <h1>女高模拟器</h1>
+    <h2 style="margin-top:20px">高一结束</h2>
+    <div id="resultText" style="font-size:14px;line-height:2"></div>
+    <button class="primary" style="width:100%;text-align:center;margin-top:14px" onclick="location.reload()">重新开始 · 再Roll一次</button>
+  </div>
+</section>
+
+</div>
+
+<script>
+"use strict";
+const traitPool=[
+["二次元","四斋蒸鹅心"],["Kpop","五女一是（）（）（）！"],["社恐","社交好可怕，还是一个人待着比较好"],["开朗","喜多~郁代~"],["现充","大家一起搞好关系吧！"],["阴暗b","现充都爆炸吧..."],["文艺b","我想死也想去巴黎"],["吉他手","吉他英雄来也！"],["地下偶像","果然xx酱最可爱了"],["认真","对学习和自己答应的事情比较上心"],["文学少女","今天的风儿有些喧嚣呢"],["傲娇","才、才不是这种性格呢！"],["大小姐","desuwa~"],["运动少女","喜欢运动，体育活动更容易进入生活"],["卷王","东亚小妹能量巨大！"],["社交悍匪","全体目光向我看齐！我宣布个事"],["佛系","随便啦都可以啦"],["熬夜人","你跑不过我你信吗"],["完美主义","希望事情做到最好，也容易给自己压力"],["吃货","小笼包叉烧包奶黄芝麻豆沙包"],["摄影爱好者","咔嚓——"],["手账少女","喜欢整理、规划和记录生活"],["追星族","很容易通过共同偶像认识朋友"],["猫派","看到猫会忍不住停下来"],["社团狂魔","很喜欢参加学校里的各种活动"],["天生卷王","提高一分干掉千人"],["慢热","刚认识别人比较冷淡，熟悉后关系稳定"],["话痨","哎我跟你说"],["低调","不喜欢成为全班焦点"],["好胜心","很在意竞争和输赢"],["玉玉","流泪猫猫头"],["日麻","断幺！1000！"],["交际花","认识不同圈子的人很自然，班里到处都有熟人"],["三无","只要微笑就好了"],["天赋","有些事情上手特别快，别人练很久你却能迅速抓到感觉"],["舞萌","要开始了哦"],["冒失","呜哇又平地摔了"],["直率","直球！"],["刺头","不太喜欢被人安排，遇到不合理的事会直接顶回去"],["中二病","邪王真眼是最强的"],["校园偶像","哦呼~"],
+["管人痴","攒钱给最喜欢的主播上舰"],["电波","在天台向创世神大人通话"],["键政","鉴证英雄"],["神人","你牛大了"],["中庸之道","第三名才是最好的"],["动画区up主","我给了其他动画区up主六年的时间"],["小博主","用镜头记录生活"],["小网红","欢迎收看高中生小博主的一天"],["白切黑","我是她朋友~"],["钝感力","不太容易被小事影响"],["冰山","看起来很冷淡，不容易主动亲近别人"],["外冷内热","嘴上不说，实际上很会照顾人"],["coser","喜欢做角色扮演和研究服装细节"],["电竞选手","反应和专注力很强，游戏里很有胜负心"],["漫画家","喜欢画画和把日常画成故事"],["Vtuber","喜欢直播、虚拟角色和网络表达"],["欧皇","偶尔会遇到非常离谱的好运"],["非酋","抽签和随机事件总让你怀疑人生"]
+];
+const NPCS={
+"大小姐":{desc:"傲娇，家境很好。嘴上嫌弃，实际上会照顾身边的人。",tag:"傲娇 / 家境好"},
+"班长":{desc:"成绩很好，认真又平易近人，像是大家眼里的完美女孩子。只是她似乎很少谈自己的事。",tag:"认真 / 成绩很好"},
+"主人公":{desc:"阳光直率，什么活动都敢第一个报名，精力像用不完一样。",tag:"直率 / 活跃"},
+"转校生":{desc:"平时不和人交流，放学也常常一个人走，安静得让人很难判断她在想什么。",tag:"孤高 / 三无感"},
+"中二病":{desc:"喜欢梳双马尾，一个人说些听不懂的话，但意外是个非常直率的好孩子。",tag:"中二 / 双马尾 / 直率"},
+"学姐":{desc:"和你同初中的学姐，在学校里风生水起，是很多人仰望的偶像。",tag:"学姐 / 校园偶像"},
+"同人女":{desc:"经常拿着本子写写画画，在某个平台似乎是非常知名的画手。",tag:"同人 / 画手"},
+"体育生":{desc:"似乎总有用不完的精力，总能看到她在操场训练。",tag:"体育生 / 高能量"}
+};
+let S={name:"",month:9,traits:[],pool:[],stats:{charm:10,intel:10,health:10,money:10},interests:[],npcs:[],npcRelation:{},npcOrder:[],npcIndex:0,used:[],randomDone:false,fixedDone:false,club:null,flags:{},history:[]};
+function shuffle(a){return [...a].sort(()=>Math.random()-0.5)}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
+function val(id){let n=parseInt(document.getElementById(id).value,10);return Math.max(0,Math.min(40,Number.isFinite(n)?n:0))}
+function checkPoints(){let t=val("iCharm")+val("iIntel")+val("iHealth")+val("iMoney");document.getElementById("remain").textContent=40-t;return t===40}
+["iCharm","iIntel","iHealth","iMoney"].forEach(id=>document.getElementById(id).addEventListener("input",checkPoints));
+function hasTrait(x){return S.traits.some(i=>S.pool[i][0]===x)}
+function hasTag(x){return hasTrait(x)||S.interests.includes(x)}
+function log(t){let b=document.getElementById("log");b.innerHTML+=`<p>· ${esc(t)}</p>`;b.scrollTop=b.scrollHeight}
+function addInterest(x){if(!S.interests.includes(x)){S.interests.push(x);log("获得兴趣标签：【"+x+"】")}}
+function update(){["charm","intel","health","money"].forEach(k=>document.getElementById(k).textContent=S.stats[k]);document.getElementById("monthLabel").textContent="高一 · "+S.month+"月";document.getElementById("buffs").innerHTML=[...S.traits.map(i=>S.pool[i][0]),...S.interests].map(x=>`<span class="buff">${esc(x)}</span>`).join("");document.getElementById("npcList").innerHTML=S.npcs.length?S.npcs.map(n=>{let d=NPCS[n],r=S.npcRelation[n]||0;return `<div class="npc"><b>${esc(n)}</b><span>${esc(d.tag)}<br>${esc(d.desc)}<br>关系：${r<2?"刚认识":r<4?"熟悉起来了":"关系不错"}</span></div>`}).join(""):"<div class='notice'>暂时还没有特别认识的人。</div>"}
+function renderPool(){S.pool=shuffle(traitPool).slice(0,10);document.getElementById("traitPool").innerHTML=S.pool.map((t,i)=>`<div class="trait" data-i="${i}" onclick="toggleTrait(${i})"><b>${esc(t[0])}</b><span>${esc(t[1])}</span></div>`).join("")}
+function toggleTrait(i){let e=document.querySelector(`[data-i="${i}"]`);if(S.traits.includes(i)){S.traits=S.traits.filter(x=>x!==i);e.classList.remove("selected")}else if(S.traits.length<3){S.traits.push(i);e.classList.add("selected")}}
+function startGame(){let n=document.getElementById("playerName").value.trim();if(!n)return alert("先给她起个名字吧。");if(S.traits.length!==3)return alert("请从10个特质中选择3个。");if(!checkPoints())return alert("四项属性的总点数必须正好是40。");S.name=n;S.stats={charm:val("iCharm"),intel:val("iIntel"),health:val("iHealth"),money:val("iMoney")};document.getElementById("setup").classList.add("hidden");document.getElementById("game").classList.remove("hidden");document.getElementById("playerNameLabel").textContent=n;document.getElementById("log").innerHTML="";S.npcOrder=shuffle(Object.keys(NPCS));log("你开始了高一上学期的生活。");log("初始特质："+S.traits.map(i=>S.pool[i][0]).join("、"));startMonth()}
+function startMonth(){S.randomDone=false;S.fixedDone=false;S.flags.clubOpen=false;document.getElementById("sectionTitle").textContent="本月事件";showRandom(0);update()}
+function safeNext(fn){return ()=>{try{fn()}catch(e){console.error(e);log("刚才发生了一点小意外，但生活没有停下来。继续往下走。 ");setTimeout(()=>recover(),0)}}}
+function recover(){if(!S.randomDone){showRandom(S.flags.randomSlot||0);return}if(!S.fixedDone){showFixed();return}nextMonth()}
+function showChoices(tag,title,text,choices,nextFn){
+ const tagEl=document.getElementById("tag"),titleEl=document.getElementById("title"),textEl=document.getElementById("text"),box=document.getElementById("choices");tagEl.textContent=tag;titleEl.textContent=title;textEl.textContent=text;box.innerHTML="";
+ choices.forEach((ch)=>{let b=document.createElement("button");b.textContent=ch[0];b.onclick=()=>{if(b.disabled)return;[...box.querySelectorAll("button")].forEach(x=>x.disabled=true);box.innerHTML="";textEl.textContent=ch[1]||"";let fn=ch[2],result;try{if(fn)result=fn()}catch(e){console.error(e);log("这一段出了小故障，已经自动跳过。 ")}
+   if(typeof result==="string" && result!=="HANDLED") textEl.textContent=result;
+   if(result==="HANDLED")return;
+   let n=document.createElement("button");n.className="primary";n.textContent="继续";n.onclick=()=>{n.disabled=true;box.innerHTML="";try{if(nextFn)nextFn();else recover()}catch(e){console.error(e);recover()}};box.appendChild(n);
+ };box.appendChild(b)});update()}
+function showRandom(slot){S.flags.randomSlot=slot;if(slot===0){let title=["第一次去卢浮宫时，没有什么特别的感觉","食堂最后一排的位置","放学铃响以后","你记住了她的名字"][S.month-9]||"认识一个新同学";let name=S.npcOrder[S.npcIndex++]||shuffle(Object.keys(NPCS))[0];while(S.npcs.includes(name)){name=shuffle(Object.keys(NPCS).filter(x=>!S.npcs.includes(x)))[0]||"班长"}let text=`你在很普通的一天里注意到了${name}。${NPCS[name].desc}\n\n`;let choices=[["主动聊两句","你从眼前的小事开始聊。",()=>{}],["顺着话题聊","你没有刻意热情，只是自然地接住了对方的话。",()=>{}]];showChoices("随机事件 · 认识同学",title,text,choices,()=>finishNPCMeet(name));return}let e=getRandomEvent();if(!e){S.randomDone=true;showFixed();return}S.used.push(e.key);S.history.push(e.title);showChoices("随机事件 · 第2次",e.title,e.text,e.choices,()=>{S.randomDone=true;showFixed();return true})}
+function finishNPCMeet(name){if(!S.npcs.includes(name)){S.npcs.push(name);S.npcRelation[name]=1}log("认识了【"+name+"】。");showNPCFollowup(name);return true}
+function showNPCFollowup(name){let lines={
+"大小姐":["她看你一眼：“我只是觉得一个人吃饭很无聊。”","你发现她说话虽然有点傲，但其实很愿意接话。"],
+"班长":[`她很自然地叫出“${S.name}”：“你今天听懂数学老师讲的了吗？”`,`她说话很有耐心，聊完还提醒你明天要交的作业。`],
+"主人公":["她远远就招手：“一起去看看社团啊！”","你还没来得及拒绝，她已经开始给你介绍学校里有什么活动。"],
+"转校生":["她先只说：“嗯。”你以为聊天结束了，她却过了一会儿问：“你叫什么名字？”","你告诉她名字后，她轻轻点头：“……记住了。”这一次她没有立刻走。"],
+"中二病":["她认真地说：“今日结界的稳定度下降了。”然后自己先笑了：“其实我就是喜欢乱说。”","她忽然很直白地问：“所以你觉得我很奇怪吗？”你发现她其实很好沟通。"],
+"学姐":["她很快认出你：“我们初中是不是见过？没想到你也来这里了。”","她在学校里确实很受欢迎，但和你说话时没有什么架子。"],
+"同人女":["她赶紧把本子合上：“刚才那个你没看到吧？”","确认你没有偷看后，她反而主动问你：“你平时看漫画吗？”"],
+"体育生":["她刚训练完，额头还在冒汗：“你也在这边？要不要一起走？”","你发现她一路还能聊个不停，完全不像刚跑完几圈。"]};let l=lines[name]||["她和你简单聊了几句。","你发现对方比第一次见面时自然了一点。"];showChoices("人物互动",name,l[0]+"\n\n"+l[1],[["继续聊","你们又聊了一会儿，关系比刚认识时更自然了。",()=>{S.npcRelation[name]=(S.npcRelation[name]||1)+1}],["先告别","你没有强行延长聊天，但以后见面应该会打招呼。",()=>{}]],()=>{S.flags.randomSlot=1;showRandom(1)})}
+function randomKnownNPC(){if(!S.npcs.length)return null;return S.npcs[Math.floor(Math.random()*S.npcs.length)]}
+function companion(name,style){if(!name)return"";S.npcRelation[name]=(S.npcRelation[name]||1)+1;let d={"班长":"班长顺手帮你确认了作业安排，聊着聊着又说到班里的小事。","主人公":"主人公直接招手：“走啊，一起去。”","大小姐":"大小姐嘴上嫌弃人多，最后还是跟你一起走了一段。","转校生":"转校生没说很多话，但安静地和你并排走了一会儿。","中二病":"中二病一路讲“结界”，讲到最后却认真问你晚饭吃什么。","学姐":"学姐在人群里认出你，顺便问你最近在学校过得怎么样。","同人女":"同人女把本子合上，跟你聊了几句最近画画和班里的趣事。","体育生":"体育生刚训练完，还是精神十足地跟你一路聊天。"};return d[name]||`${name}也刚好在附近，你们一起走了一段。`}
+const baseEvents=[
+{key:"louvre",title:"发现了新的区域哦",text:"放学后你绕了一条平时不走的路，发现学校后门附近还有一家小店和一条安静的小巷。",choices:[["自己逛一圈","你慢慢把附近的路记了下来。",()=>log("你开始熟悉学校周边。")],["叫认识的人一起","你想到一个已经认识的同学，临时约她一起走走。",()=>log(companion(randomKnownNPC(),"探索"))]]},
+{key:"future",title:"对你来说是剧毒呢",text:"晚自习前，你刷到一句很刺眼的话，突然开始想：如果三年以后回头看，现在的自己会不会后悔？",choices:[["把担心的事写下来","你把脑子里乱七八糟的想法记下来，至少它们不再混成一团。",()=>log("你把对未来的焦虑变成了一页很具体的文字。")],["找人聊聊","你把这个问题丢给熟悉的同学，发现对方也有类似的担心。",()=>log(companion(randomKnownNPC(),"社交"))]]},
+{key:"openworld",title:"开放世界冒险游戏",text:"周末你在学校附近绕了一圈，意外发现了一家以前没注意过的小店。回去以后，你又顺着兴趣查了不少相关东西，才发现自己可能刚刚碰到了一个新的爱好。",choices:[["沿着这个兴趣继续查","你一路查到很晚，终于找到几个真正想继续了解的方向。",()=>{addInterest("探索");log("你发现自己对一个新的领域产生了兴趣。")}],["叫朋友一起去看看","有人陪你一起走，原本陌生的地方一下变得有意思起来。",()=>{addInterest("探索");log(companion(randomKnownNPC(),"探索"))}]]},
+{key:"tutoring",title:"不可不品鉴的一环",text:"家长提到附近有个补习班，最近不少同学都在考虑。",choices:[["先去试一节","家境不错时，你不太需要担心一次试课的成本；家境普通或较低时，你会认真比较值不值。",()=>{if(S.stats.money>=25)log("试课的费用对你家来说不算压力，你更关注老师到底适不适合自己。");else log("你很在意这笔钱到底值不值得花，所以听得格外认真。")}],["先不报，自己试试","你决定先靠自己的节奏摸索一阵。",()=>log(S.stats.money<15?"你也不想让家里多一笔固定支出。":"你想先看看自己能不能把学习节奏建立起来。")]]},
+{key:"home168",title:"丰川家的黑暗！？",text:"你突然得知：父亲的生意一口气亏了168亿。这个数字大到你第一反应甚至不知道该怎么理解，家里的经济状况也随之发生剧烈变化。",choices:[["先听家里怎么安排","你第一次认真意识到，家庭的事情会真正改变高中生活。",()=>{S.stats.money=1;log("重大事件：家境骤降至1。") }],["装作和平时一样","你还是去上学，但开始明显留意家里的变化。",()=>{S.stats.money=1;log("重大事件：家境骤降至1。") }]]}
+];
+function getRandomEvent(){let all=[...baseEvents];if(hasTrait("大小姐"))all.push(baseEvents.find(e=>e.key==="home168"));let tags=S.traits.map(i=>S.pool[i][0]);let candidates=[];for(let t of tags){if(!S.used.includes("tag:"+t))candidates.push(makeTagEvent(t))}let usable=all.filter(e=>!S.used.includes(e.key));if(candidates.length&&Math.random()<.7)return candidates[Math.floor(Math.random()*candidates.length)];return usable[Math.floor(Math.random()*usable.length)]||candidates[0]||null}
+function makeTagEvent(t){return {key:"tag:"+t,title:tagTitles[t]||("“"+t+"”的一天"),text:(tagTexts[t]||tagOutcomes[t]||"你在放学后的校园里遇到了一件具体的小事。")+"\n\n"+(tagScenes[t]||""),choices:[[tagChoiceA[t],tagResultA(t),()=>tagEffect(t)],[tagChoiceB[t],tagResultB(t),()=>tagEffect(t)]]}}
+const tagTitles={"管人痴":"又到了给主播上舰的时候","电波":"天台上的通话","键政":"午休鉴证现场","神人":"你牛大了","中庸之道":"第三名的位置","动画区up主":"给同行一点时间","小博主":"把今天拍下来","小网红":"欢迎收看高中生的一天","白切黑":"“我是她朋友~”","钝感力":"这点小事算了","冰山":"同学眼里的你","外冷内热":"嘴上说随便","coser":"社团里的服装问题","电竞选手":"放学后的一局","漫画家":"本子上的草稿","Vtuber":"麦克风前的声音","欧皇":"抽签","非酋":"又是你抽到最差的那个","玉玉":"今天也不太想说话","日麻":"断幺！1000！","交际花":"这个人你也认识？","三无":"“你开心吗？”","天赋":"第一次上手","舞萌":"放学路上的机厅","冒失":"作业本呢？","直率":"“你觉得呢？”","刺头":"这也太不合理了吧","中二病":"封印即将解除","校园偶像":"拍张班级合照","社恐":"午休一个人的位置","开朗":"谁都能聊两句","现充":"下课后的临时聚会","阴暗b":"看着热闹的人群","文艺b":"旧书店的一页","吉他手":"音乐教室缺一个人","地下偶像":"有人在讨论线下live","认真":"老师交代的小事","文学少女":"校刊缺一篇稿子","傲娇":"明明很在意","大小姐":"放学后的消费","运动少女":"操场上的空位","卷王":"成绩单传过来","社交悍匪":"全体目光向我看齐","佛系":"随便啦都可以啦","熬夜人":"凌晨一点的消息","完美主义":"这道题一定要弄明白","吃货":"食堂新品","摄影爱好者":"下午四点的光","手账少女":"把一周重新排一遍","追星族":"有人也喜欢同一个人","猫派":"校门口的猫","社团狂魔":"今天又有活动","天生卷王":"再多做一道题","慢热":"第二次见面","话痨":"哎我跟你说","低调":"报名表传到你桌上","好胜心":"体育课上的一局","二次元":"课间的漫画讨论","Kpop":"午休舞蹈","三无":"“你开心吗？”"};
+const tagTexts={"管人痴":"你最近省下的零花钱终于攒够了一点，喜欢的主播又开了新的会员活动。","电波":"放学后你一个人站在天台边，小声向自己想象中的创世神大人汇报今天的战况。","键政":"午休时有人聊到一个社会话题，你忍不住认真加入讨论。","神人":"你突然做了一件让周围人集体沉默的事情。你自己倒觉得很合理。","中庸之道":"一次小测结束，老师公布排名。你发现自己又稳稳待在中游。","动画区up主":"你刷到别的动画区up主，突然想起自己也很久没有更新了。","小博主":"你拿起手机记录放学后的校园，发现普通日子也有很多值得拍的东西。","小网红":"你试着拍一条“高中生的一天”，意外发现镜头前的自己和平时不太一样。","白切黑":"有人问起你和某个同学的关系，你笑着说：“我是她朋友~”语气听不出多少信息。","钝感力":"班里发生了一点小尴尬，别人还在讨论，你已经转头开始做自己的事。","冰山":"同学第一次见你时总觉得你很难接近，但熟悉以后才发现不是那么回事。","外冷内热":"同学忘了带东西，你嘴上说麻烦，最后还是把自己的借给了她。","coser":"社团有人研究角色服装，你一下聊到了细节。","电竞选手":"放学后大家开了一局，你的反应速度让旁边的人有点惊讶。","漫画家":"你在本子上画了几格，把今天发生的小事变成了漫画。","Vtuber":"你发现自己很喜欢用声音和网络表达自己。","欧皇":"一次抽签，你随手抽到了最想要的那个位置。","非酋":"抽签时你又一次拿到了最不想要的结果。","玉玉":"放学前你突然觉得什么都没劲。","日麻":"有人问谁会打日麻，你一下听懂了他们讨论的牌型。","交际花":"午饭时不同桌的人都在喊你的名字。","三无":"同学问你开心不开心，你用平淡的表情回答。","天赋":"老师刚讲完一个新东西，你已经摸到了窍门。","舞萌":"放学路过机厅，熟悉的按键声让你停了下来。","冒失":"晚自习开始，你发现今天要交的作业本不见了。","直率":"老师问你的真实想法，你没有绕弯子。","刺头":"班里临时改了一条规定，你觉得不太合理。","中二病":"走廊里你听见一个双马尾女生认真讨论“结界”。","校园偶像":"活动结束后，大家自然地把镜头对准了你。"};
+const tagScenes={"二次元": "午休时后排有人拿着漫画讨论最新一话，几个人围在一起争论角色到底有没有伏笔。", "Kpop": "午休铃刚响，教室后排放起了熟悉的歌，有人跟着节拍比划舞步。", "社恐": "午休时教室里很吵，你端着饭盒找到了一个靠窗的空位，终于不用应付一整桌人的聊天。", "开朗": "课间有人因为作业问题问你一句，你接着聊到社团、食堂，最后连隔壁桌也加入了。", "现充": "放学前几个人临时商量周末去哪儿，你顺手把两个原本互不认识的同学也叫了过来。", "阴暗b": "操场边人声很大，你坐在看台最后一排看着他们折腾，偶尔和旁边的人吐槽一句。", "文艺b": "放学经过教学楼拐角，夕阳照在旧公告栏上，你站了一会儿，把那个画面记进了手机备忘录。", "吉他手": "音乐教室里有人临时缺了一把伴奏，老师问有没有会弹吉他的同学，你的手已经放到琴弦上了。", "地下偶像": "午休有人聊起最近的线下live，你发现自己知道她们最近换了什么歌单。", "认真": "班主任让你统计一次作业收交情况，表格看起来很简单，但漏一个名字都会影响后面的登记。", "文学少女": "校刊编辑在班级群里征稿，你看到“校园生活”四个字，突然想起前几天放学路上的一幕。", "傲娇": "同桌忘了带尺子，问你能不能借一下。你把尺子递过去，还补了一句“下次记得自己带”。", "大小姐": "放学后几个同学准备去商场买活动要用的东西，你发现自己可以直接选更省事的方案。", "运动少女": "体育课结束的哨声响了，别人都坐在场边喝水，你却还想再绕操场跑一圈。", "卷王": "老师把小测成绩发下来，前几名开始互相问错题，你已经在草稿纸上写下一条下一次的复习计划。", "社交悍匪": "班里因为活动安排吵成一团，你拍了拍讲台旁的桌子：“先听我说一下。”", "佛系": "原本约好的活动临时少了两个人，大家都在纠结要不要改计划，你看了看时间。", "熬夜人": "晚上十一点多作业终于写完，你本来只打算看十分钟手机，消息列表却越刷越长。", "完美主义": "一张已经交过的海报被你发现角落里有一处字距不齐，你盯着它看了半天。", "吃货": "食堂今天换了窗口菜单，小笼包、叉烧包和奶黄包摆在一起，你认真研究了哪一份最值得买。", "摄影爱好者": "下午最后一节课结束，教学楼玻璃上的光刚好落在楼梯口，你下意识拿出了手机。", "手账少女": "周日晚饭后，你把下周课程表、作业截止时间和想参加的活动一起摊在桌上。", "追星族": "午休有人在看演唱会片段，你认出了屏幕上的歌手，忍不住凑过去问是哪一场。", "猫派": "放学走到校门口，保安室旁边那只熟悉的猫正趴在纸箱里晒太阳，你已经走出几步又折返回来。", "社团狂魔": "一个社团活动刚结束，另一边的招新群又发消息说晚上还有一次排练。", "天生卷王": "数学老师讲完一道新题，只给了三分钟让大家自己试，你第一遍就找到了关键关系。", "慢热": "上周只是点头之交的同学今天又在走廊遇到你，这一次她主动问你是不是也去食堂。", "话痨": "午饭只剩二十分钟，你从今天早上的一件事讲起，讲到一半已经聊到了昨天的电视剧。", "低调": "班级活动的报名表传到你桌上，前面已经有好几个人抢着写名字。", "好胜心": "体育课分组打球，最后一分是谁赢并不重要，但你明显不想让对面轻松拿下。", "管人痴": "你打开直播平台时，主播正在感谢新加入会员的人。你看了一眼自己攒了很久的钱。", "电波": "下午最后一节自习后，天台上没人，你靠着栏杆，小声把今天发生的事情讲给想象中的“创世神大人”。", "键政": "午休刷到一条社会新闻，旁边几个人已经讨论起来，你听着听着忍不住加入。", "神人": "放学前你突然决定做一件班里没人想到的事，执行完以后周围安静了几秒。", "中庸之道": "小测成绩贴在公告栏上，你的名字又在中间区域。有人问你为什么不冲前面，你想了想自己的安排。", "动画区up主": "晚上写完作业后，你打开剪辑软件，电脑里还有上个月录下来的素材，一直没剪完。", "小博主": "周五放学，你沿着熟悉的校门口一路拍：便利店、公交站、同学背影，都是每天会经过的地方。", "小网红": "你架好手机准备拍“高中生的一天”，第一句台词说到一半自己先笑了。", "白切黑": "午休有人半开玩笑地问你：“你跟她是不是关系特别好？”你笑着回答了一句看似普通的话。", "钝感力": "班里因为一句玩笑产生了点尴尬，周围的人还在猜是谁生气了，你已经开始收拾下一节课的书。", "冰山": "刚认识你的同学总觉得你不太好接近。今天她随口提到自己喜欢的饮料，你第二天却记得。", "外冷内热": "同学的文件忘在打印室，你路过时看见了，嘴上说“真麻烦”，还是把它带回了教室。", "coser": "美术社准备给校园活动做角色服装，有人拿着参考图讨论假发、布料和配件。", "电竞选手": "放学后几个同学临时开了一局，比赛拖到最后一波团战，所有人都盯着屏幕。", "漫画家": "自习课有十分钟空档，你在草稿本边角画了四个格子，把今天同桌的表情画了进去。", "Vtuber": "晚上你戴上耳机，对着电脑试着录一段声音，删了两次以后终于留下了一版。", "欧皇": "班里要抽签决定活动座位，大家都在讨论哪个位置最方便，你随手抽了一张。", "非酋": "班里抽签决定活动分组，你前面的人一个个抽到好位置，轮到你时只剩最后几张。", "玉玉": "放学铃响了，你却没有立刻起身。作业、考试和之后的事情一起压在脑子里，让你只想安静一会儿。", "日麻": "晚自习结束后有人在讨论牌局，你听到“断幺”两个字，马上知道他们刚才发生了什么。", "交际花": "去食堂的路上，前面有人喊你的名字，走到楼梯口又有另一个圈子的同学和你打招呼。", "三无": "同桌盯着你的脸问：“你今天是不是不太高兴？”你只是笑了笑，把水杯推回桌角。", "天赋": "老师第一次教一个新软件的操作步骤，很多人还在看说明，你已经自己试出了快捷的方法。", "舞萌": "放学经过机厅，机器的音乐从门口传出来。你本来只是路过，脚却已经停在门边。", "冒失": "晚自习前你翻遍书包都找不到作业本，最后发现它被自己夹在了另一科的练习册里。", "直率": "班主任问大家对新安排有什么意见，教室里没人说话，你直接把自己觉得不合理的地方讲了出来。", "刺头": "班里临时通知一项新规定，要求大家周末额外完成一份作业，你当场举手问为什么。", "中二病": "走廊尽头一个双马尾女生正认真地说“封印松动了”，你站近以后才发现她是在说今天的风很大。", "校园偶像": "学校活动需要拍一张班级宣传照，摄影同学让大家往前站一点，最后自然把你留在了比较显眼的位置。"};
+const tagOutcomes={
+"二次元": "你把漫画讨论从“最近在看什么”聊到了角色和设定，原本的闲聊一下有了共同话题。",
+"Kpop": "午休音乐一响，你几乎不用试就跟上了熟悉的节拍，旁边的人开始问你跳的是哪首。",
+"社恐": "你最后没有挤进人群，而是找了一个安静位置把事情做完，反而觉得这样最轻松。",
+"开朗": "你本来只想说一句，最后和三个人聊起了完全不同的话题，连时间都过得很快。",
+"现充": "你把原本互不认识的几个人拉到了一起，最后大家居然真的聊得起来。",
+"阴暗b": "你站在人群边上吐槽了两句，嘴上嫌弃热闹，视线却一直没有离开。",
+"文艺b": "你在一个很普通的下午突然被某个画面打动，回去后忍不住写了几句话。",
+"吉他手": "你试着弹了一段熟悉的和弦，教室里立刻有人问：“你平时真的弹琴啊？”",
+"地下偶像": "有人提到最近的线下live，你立刻说出了几个熟悉的名字，话题一下变得具体起来。",
+"认真": "老师交代的小事到了你手里，你没有拖到最后，顺手把需要确认的细节都处理好了。",
+"文学少女": "你从一句课文聊到一本书，最后连原本没打算参加校刊的人都被你说得有点心动。",
+"傲娇": "你明明已经帮了忙，嘴上却还要补一句：“我只是刚好顺手。”",
+"大小姐": "你发现自己有能力把原本麻烦的选择直接换成更省事的方案。",
+"运动少女": "体育课结束以后别人都在休息，你却还有余力绕操场走一圈。",
+"卷王": "别人还在讨论分数，你已经开始比较下一次怎么把薄弱题型补上。",
+"社交悍匪": "你拍了拍桌子把大家注意力聚过来，一句话就把原本散乱的讨论重新拉回主题。",
+"佛系": "事情没有完全按计划发展，你看了一眼，最后只是说：“行吧，也没什么。”",
+"熬夜人": "晚上本来只想看一会儿手机，结果回过神已经很晚，你第二天顶着困意继续上课。",
+"完美主义": "一个小地方没做好让你卡了很久，最后终于改到自己满意才肯放下。",
+"吃货": "你一路比较了食堂几个窗口，最后精准选中了今天最值得吃的那份。",
+"摄影爱好者": "你发现下午的光线刚好落在教学楼墙面上，第一反应不是走过去，而是掏出手机。",
+"手账少女": "你把这周的作业、活动和想做的事情重新排了一遍，突然发现时间其实够用。",
+"追星族": "你在教室里听见有人提到同一个偶像，两个人立刻从点头之交聊成了熟人。",
+"猫派": "校门口那只猫突然从墙边钻出来，你原本赶着回家，还是停了下来。",
+"社团狂魔": "一个活动刚结束，另一个社团又来找人，你居然真的开始认真考虑要不要参加。",
+"天生卷王": "老师刚讲完新题型，你第一次尝试就抓到了关键步骤。",
+"慢热": "第二次见面时你终于主动说了句话，对方明显也松弛了下来。",
+"话痨": "你本来只想说一件事，结果从午饭一路讲到了放学。",
+"低调": "报名表传到你桌上时，你没有抢着举手，只在最后安静地填了自己的名字。",
+"好胜心": "一场很普通的小竞争让你认真起来，结束以后还在想刚才到底输在哪里。",
+"玉玉": "今天什么都提不起劲，你没有硬撑着装开心，只把最必要的事情做完。",
+"日麻": "几个人在聊牌局，你听懂了“断幺”以后直接接上了话，桌上的人都愣了一下。",
+"交际花": "不同圈子的同学轮流和你打招呼，你突然意识到自己在班里真的认识不少人。",
+"三无": "别人问你是不是开心，你只是笑了一下，没有多解释，但对方也没有继续追问。",
+"天赋": "第一次接触的新东西，你很快就摸到了规律，旁边的人还在研究说明。",
+"舞萌": "路过机厅时熟悉的音乐响起来，你进去打了一局，手感意外地很好。",
+"冒失": "你找了半天才发现东西就在自己手边，周围的人已经开始笑你了。",
+"直率": "有人问你真实想法，你没有绕弯子，直接把答案说了出来。",
+"刺头": "临时规定明显不合理，你当场提出了具体的问题，老师也只好重新解释。",
+"中二病": "双马尾女生认真说完一串你完全听不懂的话，最后却突然问你：“要不要一起吃饭？”",
+"校园偶像": "大家拍班级合照时，自然而然有人把你推到了镜头更显眼的位置。",
+"管人痴": "你认真算了一遍零花钱，最后决定这次先攒着，不让一时冲动打乱整个月的开销。",
+"电波": "你站在天台小声说完一段只有自己听得懂的话，回到教室后反而安静了不少。",
+"键政": "午休讨论社会新闻时你说得很投入，后来意识到大家的观点其实差得很远。",
+"神人": "你做完那件事以后，全班沉默了几秒；你自己也想了想，确实有点难解释。",
+"中庸之道": "成绩单下来，你又稳稳地待在中间位置，没有惊喜，也没有失手。",
+"动画区up主": "你重新打开剪辑软件，把拖了很久的视频剪掉了开头一大段，终于有了发布的冲动。",
+"小博主": "你记录了一段放学路上的普通画面，回看时发现它比精心摆拍的东西更像真实的高中生活。",
+"小网红": "你试着对着镜头说“欢迎收看”，说到第二句自己先笑场，但还是把视频拍完了。",
+"白切黑": "有人试探着问你朋友的事，你笑着回答得滴水不漏，对方什么有用信息都没套到。",
+"钝感力": "别人还在为一句话纠结，你已经去做下一件事了，情绪没有被拖很久。",
+"冰山": "你只是简单回答了几句，但对方后来发现你其实记得她之前随口说过的事。",
+"外冷内热": "你嘴上说“自己弄”，转身还是把同学落下的东西送了过去。",
+"coser": "服装细节讨论起来以后你越说越具体，连普通校服怎么改都能聊半天。",
+"电竞选手": "一局普通的对抗游戏打到最后，你的反应速度让队友直接喊你别划水了。",
+"漫画家": "你把今天发生的一件小事画成四格，最后一格连自己看了都觉得好笑。",
+"Vtuber": "你试着用不同的声音表达同一句话，发现网络上的自己似乎比现实里更放松。",
+"欧皇": "你本来只是随手一试，结果真的拿到了最想要的那一个。",
+"非酋": "你换了两个办法，结果还是拿到了最不想要的结果，只能认命。"
+};
+const tagChoiceA={
+"二次元": "找人聊作品",
+"Kpop": "跟着音乐跳两下",
+"社恐": "找安静角落",
+"开朗": "主动搭话",
+"现充": "把几个人叫到一起",
+"阴暗b": "站远一点看",
+"文艺b": "记下一个画面",
+"吉他手": "弹一段熟悉的",
+"地下偶像": "聊最近的live",
+"认真": "把事情先做完",
+"文学少女": "聊到最近读的书",
+"傲娇": "帮完再装作没事",
+"大小姐": "直接选更方便的方案",
+"运动少女": "继续运动",
+"卷王": "现在就看错题",
+"社交悍匪": "把大家叫回来",
+"佛系": "顺其自然",
+"熬夜人": "再刷十分钟",
+"完美主义": "一定改到满意",
+"吃货": "先看今天吃什么",
+"摄影爱好者": "拍下来",
+"手账少女": "重新排时间",
+"追星族": "问对方喜欢哪首歌",
+"猫派": "停下来摸摸猫",
+"社团狂魔": "再报名一个",
+"天生卷王": "直接试新题",
+"慢热": "第二次主动打招呼",
+"话痨": "把话题继续讲下去",
+"低调": "最后再填",
+"好胜心": "认真比一局",
+"玉玉": "只做必要的事",
+"日麻": "接一句牌谱",
+"交际花": "去认识那桌人",
+"三无": "微笑带过",
+"天赋": "直接上手",
+"舞萌": "进机厅",
+"冒失": "回头再找",
+"直率": "直接回答",
+"刺头": "当场问清楚",
+"中二病": "认真接中二病的话",
+"校园偶像": "站到镜头中间",
+"管人痴": "先把钱留着",
+"电波": "继续和创世神通话",
+"键政": "继续讨论",
+"神人": "就这么做",
+"中庸之道": "维持第三名",
+"动画区up主": "重新剪视频",
+"小博主": "把这段拍下来",
+"小网红": "认真出镜",
+"白切黑": "继续装作普通朋友",
+"钝感力": "不放在心上",
+"冰山": "记住对方的话",
+"外冷内热": "默默帮忙",
+"coser": "研究服装",
+"电竞选手": "认真打完",
+"漫画家": "画下来",
+"Vtuber": "录一段声音",
+"欧皇": "相信手气",
+"非酋": "让别人来抽"
+};
+const tagChoiceB={
+"二次元": "只聊剧情梗",
+"Kpop": "收藏推荐",
+"社恐": "直接回座位",
+"开朗": "等别人先开口",
+"现充": "只和熟人待着",
+"阴暗b": "转身回教室",
+"文艺b": "去旧书店看看",
+"吉他手": "先听别人弹",
+"地下偶像": "只点赞不发言",
+"认真": "回家再确认",
+"文学少女": "写进读书笔记",
+"傲娇": "等对方自己发现",
+"大小姐": "先看看价格",
+"运动少女": "去操场跑两圈",
+"卷王": "把下一章先做了",
+"社交悍匪": "自己整理信息",
+"佛系": "随便选一个",
+"熬夜人": "现在就睡",
+"完美主义": "先放下这道题",
+"吃货": "换个窗口",
+"摄影爱好者": "留到以后再拍",
+"手账少女": "只记三件事",
+"追星族": "从偶像聊到学校",
+"猫派": "赶紧回家",
+"社团狂魔": "先参加一次再说",
+"天生卷王": "先研究例题",
+"慢热": "等第三次见面",
+"话痨": "终于把故事讲完",
+"低调": "等别人都填完",
+"好胜心": "不服再来一局",
+"玉玉": "明天再处理",
+"日麻": "问清楚规则",
+"交际花": "从认识的人开始",
+"三无": "只说“还好”",
+"天赋": "看看别人怎么做",
+"舞萌": "换一首歌",
+"冒失": "承认是自己弄丢的",
+"直率": "说出真实答案",
+"刺头": "提出更具体的反对意见",
+"中二病": "先问她吃什么",
+"校园偶像": "拍别人不拍自己",
+"管人痴": "再攒一个月",
+"电波": "回去写下来",
+"键政": "继续讲下去",
+"神人": "先看看其他人排名",
+"中庸之道": "彻底重剪",
+"动画区up主": "只拍一秒",
+"小博主": "不出镜",
+"小网红": "什么都不说",
+"白切黑": "当作没发生",
+"钝感力": "观察一会儿",
+"冰山": "假装不在意",
+"外冷内热": "先打草稿",
+"coser": "和队友复盘",
+"电竞选手": "画另一个结局",
+"漫画家": "换个角色声音",
+"Vtuber": "再试一次",
+"欧皇": "让朋友来抽"
+};
+tagChoiceA["非酋"]="让朋友来抽";tagChoiceB["非酋"]="自己再试一次";
+function tagResultA(t){return tagOutcomes[t]||"你选择了第一种处理方式，事情按照这个决定继续发展。"}
+function tagResultB(t){return (tagOutcomes[t]||"你换了另一种处理方式，事情按照这个决定继续发展。")+" 你没有走另一条路，因此后面的结果也不一样。"}
+function tagEffect(t){if(t==="大小姐"&&S.stats.money>1)log("你的家庭条件让这件事的选择空间明显更大。");if(t==="运动少女"||t==="电竞选手")log(S.stats.health>=28?"你的体力和专注状态很好。":"你今天状态一般，做完以后有点累。");if(t==="校园偶像"||t==="交际花")log(S.stats.charm>=28?"你的魅力让你很容易成为人群里被记住的人。":"你没有刻意成为中心，但还是有人记住了你。");if(t==="认真"||t==="卷王"||t==="天生卷王")log(S.stats.intel>=26?"你的智力让你很快抓住了重点。":"你需要多花一点时间才能把事情理顺。")}
+function showFixed(){let list=FIXED[S.month];if(!list){S.fixedDone=true;finish();return}runFixed(list,0)}
+function runFixed(list,i){if(i>=list.length){S.fixedDone=true;showEndMonth();return}showChoices("固定事件 · "+S.month+"月",list[i].title,list[i].text,list[i].choices,()=>runFixed(list,i+1))}
+function showEndMonth(){document.getElementById("tag").textContent="本月结束";document.getElementById("title").textContent=S.month===12?"高一上学期结束":"这个月的事情告一段落了";document.getElementById("text").textContent=S.month===12?"四个月的高中生活暂时告一段落。你已经开始有了自己的节奏，也留下了一些真正认识的人。":"你收好书包，准备进入下个月。";let b=document.getElementById("choices");b.innerHTML="";let n=document.createElement("button");n.className="primary";n.textContent=S.month===12?"查看这一阶段的总结":"进入下个月";n.onclick=()=>{n.disabled=true;b.innerHTML="";if(S.month===12)finish();else{S.month++;startMonth()}};b.appendChild(n);update()}
+function fixedResult(style,base){let a=[base],c=S.stats.charm,h=S.stats.health,m=S.stats.money,i=S.stats.intel;let n=randomKnownNPC();if(style==="社交"){a.push(c>=30?"你的魅力让你很容易被人记住，主动交流也显得自然。":c>=18?"你给人的感觉比较自然，认识新同学不算困难。":"你不太会主动成为气氛中心，但熟悉以后关系会慢慢稳定下来。");if(n)a.push(companion(n,"社交"))}else if(style==="探索"){a.push(h>=28?"你的精力很好，走了不少路也不觉得累。":h<14?"你走了一阵就有点累，最后还是选择了短一点的路线。":"你慢慢摸清了校园周边。" );}else if(style==="独处"){a.push(h<14?"你最近有些累，这段独处更像是在恢复体力。":"你有一段完全属于自己的时间。");if(hasTrait("社恐")||hasTrait("三无"))a.push("对你来说，独处并不等于无聊。") }else if(style==="活跃"){a.push(c>=28?"你在这种集体活动里很有存在感。":"你没有成为绝对中心，但也很自然地融入了热闹的人群。");if(n)a.push(companion(n,"社交"))}else if(style==="低调"){a.push(c<18?"你更习惯站在人群外观察，别人也很少强行把你推到中心。":c>=28?"你明明很容易被注意到，却总能把存在感控制在自己舒服的程度。":"你不抢镜，但需要说话的时候也不会躲开。") }else if(style==="观察"){a.push(c>=28?"你观察得很细，没多久就能分清谁爱热闹、谁习惯独处。":c<18?"你没有急着和所有人打招呼，而是先把班里的相处方式看明白了。":"你很快抓到了班级里的几个小圈子和大家的说话方式。") }else if(style==="健康"){a.push(h>=28?"你的身体状态很好，冷空气反而让你觉得清醒。":h<14?"你比别人更怕冷，回教室以后缓了好一会儿。":"你正常享受了这个冬天的小插曲。") }else if(style==="学习"){a.push(i>=28?"你很快抓住重点，复习效率不错。":i>=20?"你能找到大部分题目的切入口。":"你需要花更多时间整理基础内容。");if(hasTrait("认真")||hasTrait("卷王"))a.push("你的特质让你愿意把没弄懂的地方继续追下去。") }else if(style==="家境"){a.push(m>=28?"家庭条件给了你比较大的选择空间。":m<15?"你会更认真考虑每一笔额外支出。":"你开始学会在想要和必要之间做取舍。") }return a.join("\n\n")}
+function examResult(later){let i=S.stats.intel,h=S.stats.health,r=i>=32?"班级前10%":i>=26?"班级前25%":i>=20?"班级前45%":i>=15?"班级前70%":"班级后30%";let t=`你的第一次月考大致落在${r}。`;if(h<12)t+=" 连续考试让你明显有些疲惫。";else if(h>=28)t+=" 你的精神状态很稳定。";if(hasTrait("卷王")||hasTrait("天生卷王"))t+=" 你对排名的敏感度比别人更高。";if(later)t+=" 你没有立刻盯着排名，反而让这次考试晚一点进入自己的情绪。";return t}
+function divisionResult(kind){let i=S.stats.intel;let favored=Math.random()<.5?"文科":"理科";let strong=favored==="文科"?"语文、历史和表达类内容":"数学、物理和逻辑类内容";if(kind==="成绩")return `老师拿着你的平时表现和考试情况看了一会儿，觉得你更擅长${favored}。你自己回头比较，确实发现${strong}更容易进入状态。${i>=28?"你的成绩也让这个方向看起来相当有竞争力。":"不过老师提醒你，真正决定方向的还是之后持续的表现。"}`;return `这次没有直接按分数决定。你随机发现自己更容易对${strong}产生兴趣，于是暂时把${favored}记进了考虑范围。${i>=24?"你的成绩也刚好能跟上这种兴趣。":"至于能不能长期坚持，还得再观察一段时间。"}`}
+function competitionResult(ask){let i=S.stats.intel;if(i>=26||hasTrait("天赋")||hasTrait("天生卷王")||hasTrait("卷王")){let pool=["信息学","物理","化学","生物","数学"];let fav=pool[Math.floor(Math.random()*pool.length)];return `老师和你聊了一会儿，最后随机推荐你重点了解${fav}竞赛。你听介绍时发现，这一科的思路确实比其他几项更容易让你产生兴趣。${ask?"你还问了参加过的学姐，知道了不少真实情况。":"你先坐下来完整听了一节介绍。"}`;}if(i>=18)return"老师觉得你可以先尝试一项竞赛，但不建议同时铺开太多。你最后决定先旁听，再看自己能不能接受额外训练。";return"你听完五项竞赛的介绍，没有哪一项明显吸引你。至少这次你知道了竞赛生活和普通课堂完全不是一回事。"}
+function talentResult(team){let a=[];if(hasTrait("吉他手")||hasTag("音乐"))a.push("你的乐器经验让节目很稳。");if(hasTrait("Kpop")||hasTag("舞蹈"))a.push("你对舞台节奏比较熟。");if(hasTrait("校园偶像")||S.stats.charm>=28)a.push("你的魅力让你在台上特别容易被注意到。");else a.push("你没有夸张地成为全场焦点，但还是有人记住了这个节目。");if(team&&randomKnownNPC())a.push(companion(randomKnownNPC(),"社交"));return a.join("\n\n")}
+function artResult(a){if(hasTag("美术")||hasTrait("文艺b")||hasTrait("摄影爱好者")||hasTrait("漫画家"))return"老师觉得你有审美和兴趣基础，值得继续了解。"+(S.stats.money>=28?" 家庭条件也能比较从容地支持长期训练。":"");if(S.stats.charm>=22)return"你的画面表现力不错，老师建议你先旁听几次训练。";return"你的基础比较普通，但旁听以后你终于知道美术训练到底有多辛苦。"+(a?" 你暂时没有急着报名。":"")}
+function studyResult(group){let i=S.stats.intel,a=[];if(i>=24&&(hasTrait("认真")||hasTrait("卷王")||hasTrait("手账少女")))a.push("你的学习方法比较稳定，整理起来很有条理。");else if(group&&hasTrait("社交悍匪"))a.push("你讲题的时候很有气势，几个人互相讲了一遍以后反而记得更牢。");else a.push("你至少把这一学期的重点重新过了一遍。");if(hasTrait("完美主义"))a.push("你还忍不住把几个错误反复复盘。") ;return a.join("\n\n")}
+function finalExamResult(peer){let i=S.stats.intel,h=S.stats.health,a=[i>=26?"基础题和大部分常规题你都有切入口。":i>=18?"大部分题目都能找到切入口，只是有几道比较耗时间。":"有些题让你花了不少时间，但你还是尽量完成了。"] ;if(h<14)a.push("连续考试让你明显疲惫，后半程注意力下降了一些。");else if(h>=28)a.push("你的身体状态很好，几场考试下来依然保持稳定。");if(peer)a.push("考完和同学对答案以后，你发现大家其实都有几道不确定的题。");if(hasTrait("佛系"))a.push("你没有继续折磨自己，很快开始想寒假。 ");if(hasTrait("完美主义"))a.push("你已经开始在脑子里复盘刚才的失误。");return a.join("\n\n")}
+function showClub(){let box=document.getElementById("choices");document.getElementById("tag").textContent="固定事件 · 9月";document.getElementById("title").textContent="社团纳新";document.getElementById("text").textContent="摊位几乎摆满了教学楼前。文学社、动漫社、音乐社、美术社、街舞社、广播站、志愿者协会、篮球社……你可以把放学后的时间交给其中一个，也可以一个都不选。";box.innerHTML="";let clubs=[["文学社","文学","喜欢写东西、看书，也会参与校刊。"],["动漫社","二次元","一起看番、聊漫画和游戏。"],["音乐社","音乐","排练、乐器、偶尔参加学校演出。"],["美术社","美术","画画、板报和校内视觉设计。"],["街舞社","舞蹈","练舞、排节目，放学后活动比较多。"],["广播站","播音","录音、播音和校园广播。"],["志愿者协会","志愿服务","校内外志愿活动。"],["篮球社","篮球","训练和校内比赛。"],["话剧社","话剧","排练、舞台和角色。"],["辩论社","辩论","讨论问题、准备辩题。"]];clubs.forEach(c=>{let b=document.createElement("button");b.innerHTML=`<b>${esc(c[0])}</b>　→　兴趣标签：${esc(c[1])}<br><span style="font-size:11px;color:#8b827a">${esc(c[2])}</span>`;b.onclick=()=>{if(S.flags.clubOpen)return;S.flags.clubOpen=true;S.club=c[0];addInterest(c[1]);log("加入社团："+c[0]);box.innerHTML="";let n=document.createElement("button");n.className="primary";n.textContent="继续";n.onclick=()=>{n.disabled=true;box.innerHTML="";runFixed(FIXED[9],3)};box.appendChild(n)};box.appendChild(b)});let home=document.createElement("button");home.textContent="不加入任何社团 → 归宅部";home.onclick=()=>{if(S.flags.clubOpen)return;S.flags.clubOpen=true;S.club="归宅部";addInterest("归宅部");log("没有加入社团，成为归宅部。");box.innerHTML="";let n=document.createElement("button");n.className="primary";n.textContent="继续";n.onclick=()=>{n.disabled=true;box.innerHTML="";runFixed(FIXED[9],3)};box.appendChild(n)};box.appendChild(home);return "HANDLED"}
+const FIXED={
+9:[
+{title:"认识新同学",text:"开学第一天，班主任让大家简单自我介绍。陌生的座位、陌生的名字，还有一群以后可能一起度过三年的人。",choices:[["主动记几个名字","你决定先认识几个人。",()=>fixedResult("社交","你主动记住了几个新同学。")],["先观察班里的气氛","你没有急着融入，而是先看看大家是什么样的人。",()=>fixedResult("观察","你很快摸清了班里大概的气氛。")]]},
+{title:"熟悉校园",text:"接下来的几天，你开始摸清学校：教学楼、食堂、操场、医务室、图书馆，以及放学以后哪里最安静。",choices:[["自己慢慢逛","你按照自己的路线认识校园。",()=>fixedResult("探索","你记住了几个以后可能常去的地方。")],["跟着同学一起逛","有人带着你走了一圈，还顺便告诉你一些学校里的小秘密。",()=>fixedResult("社交","你通过同学更快熟悉了校园。")]]},
+{title:"社团纳新",text:"教学楼前摆满了摊位。文学社、动漫社、音乐社、美术社、街舞社、广播站、志愿者协会、篮球社……",choices:[["认真比较几个社团","你没有被招新海报牵着走，而是认真想想放学后的时间想花在哪里。",()=>showClub()],["跟着认识的人去看看","有人陪着的时候，很多社团都没那么陌生。",()=>showClub()]]},
+{title:"学生会招新",text:"学生会开始招新。有人想锻炼能力，有人想认识更多人，也有人单纯觉得活动挺有意思。",choices:[["报名试试","你去填了报名表。",()=>fixedResult("社交","你参加了学生会招新。")],["先旁听一次活动","你先看看学生会平时到底在做什么。",()=>fixedResult("观察","你对学生会的实际工作有了具体认识。")]]}
+],
+10:[
+{title:"国庆节假期",text:"国庆假期到了。作业当然不会消失，但至少不用每天六点多起床。",choices:[["约朋友出去走走","你们就在附近逛了一天。",()=>fixedResult("社交","你和朋友度过了一天不太有计划的假期。")],["留一天完全给自己","你睡到自然醒，慢慢做作业，晚上还有时间刷点喜欢的东西。",()=>fixedResult("独处","你重新找回了一点自己的生活节奏。")]]},
+{title:"第一次月考",text:"高中第一次月考来了。试卷发下来时，你第一次真正看见自己在新班级里的位置。",choices:[["考完立刻看排名","你和同学一起蹲在成绩单旁边找自己的名字。",()=>examResult(false)],["先不看，回家再说","你决定让这次考试晚一点进入自己的情绪。",()=>examResult(true)]]},
+{title:"文理分科",text:"学校开始正式讨论文理分科。老师和家长都在问：你以后到底想学什么？",choices:[["先看自己最擅长的科目","你开始比较各科成绩。",()=>divisionResult("成绩")],["先想自己愿意学什么","你暂时不急着看分数，而是想如果没有人逼你，你会主动学什么。",()=>divisionResult("兴趣")]]},
+{title:"竞赛招人",text:"信息学、物理、化学、生物、数学竞赛开始招人。",choices:[["去听听最感兴趣的一科","你坐进教室听了一节介绍。",()=>competitionResult(false)],["先问问参加过的人","你从学长学姐那里听到了更多真实体验。",()=>competitionResult(true)]]}
+],
+11:[
+{title:"初雪",text:"今年的第一场雪落下来了。课间的时候，很多人趴在窗边看。",choices:[["下楼看看","你在冷空气里站了一会儿。",()=>fixedResult("健康","你享受了一会儿难得的课间。")],["留在教室看窗外","你没有下楼，但和同桌聊了几句今年的冬天。",()=>fixedResult("社交","一个普通课间也留下了一点记忆。")]]},
+{title:"单身情歌",text:"11月11日，晚自习前后，操场上不知道是谁先唱起了《单身情歌》。没有人组织，也没有老师主持。",choices:[["去操场凑热闹","你加入了这场莫名其妙的合唱。",()=>fixedResult("活跃","你觉得这种事情大概只有高中才会发生。")],["在教学楼门口听","你没有挤进人群，但隔着一段距离听完整首歌。",()=>fixedResult("低调","你站在人群外，也觉得这个晚上挺有意思。")]]},
+{title:"才俊杯",text:"学校举办才俊杯，全校学生都可以报名自由表演才艺。唱歌、跳舞、乐器、魔术、相声……什么都有。",choices:[["报一个自己最拿手的","你不一定想赢，但想试一次站上台的感觉。",()=>talentResult(false)],["找朋友一起组个节目","比起一个人站台上，你更想和熟悉的人一起折腾。",()=>talentResult(true)]]},
+{title:"美术生选拔",text:"美术组开始选拔准备走美术方向的学生。老师说，不只是看现在画得多好，也看愿不愿意长期练。",choices:[["报名参加测试","你坐下来画了一张完整的素描。",()=>artResult(false)],["先旁听一次集训","你看了一下午真正的训练强度。",()=>artResult(true)]]}
+],
+12:[
+{title:"跨年",text:"12月最后一个晚上，大家开始讨论跨年。有人约朋友出去，有人在家刷手机，也有人还在赶期末作业。",choices:[["和朋友一起倒数","你们一起熬到零点。",()=>fixedResult("社交","你和朋友一起迎来了新年。")],["给自己留一个晚上","你在自己的房间里慢慢迎来新的一年。",()=>fixedResult("独处","你安静地给这一学期画了一个句号。")]]},
+{title:"期末复习",text:"教室里的气氛明显变了。黑板上的倒计时越来越近，大家开始整理错题和笔记。",choices:[["和同学一起整理","有人讲题，有人找错题，效率意外地不错。",()=>studyResult(true)],["按照自己的方法复习","你把时间表、错题和薄弱章节重新整理了一遍。",()=>studyResult(false)]]},
+{title:"期末考试",text:"第一学期最后一场考试结束。走出考场的时候，你突然发现自己已经在这里生活了四个月。",choices:[["和同学对答案","你们一边对答案一边吐槽。",()=>finalExamResult(true)],["先不对，回家再说","你决定让大脑休息一下。",()=>finalExamResult(false)]]}
+]};
+function finish(){document.getElementById("game").classList.add("hidden");document.getElementById("result").classList.remove("hidden");let s=S.stats,traits=S.traits.map(i=>S.pool[i][0]),r=S.npcRelation;let strong=[];if(s.charm>=28)strong.push("你的魅力让你更容易在人群中留下印象。");else if(s.charm<14)strong.push("你没有急着成为人群中心，关系更多是在熟悉以后慢慢建立。");else strong.push("你的魅力处在比较自然的区间，既不会特别抢眼，也不难融入。");if(s.intel>=28)strong.push("你的学习能力比较扎实，月考、竞赛和期末都给了你比较稳定的选择空间。");else if(s.intel<18)strong.push("学习并不是你最轻松的部分，你更多靠时间和自己的节奏一点点补上。");else strong.push("你的学习能力处在一个可以靠方法继续往上走的位置。");if(s.health>=28)strong.push("你的体力很好，活动、冬天和连续考试都没有太明显拖慢你的生活。");else if(s.health<14)strong.push("你的健康状况偏弱，疲惫感在冬天和考试周尤其明显。");else strong.push("你的身体状态总体正常，但忙起来还是会感到累。");if(s.money>=28)strong.push("家庭条件给了你更多选择：补习、兴趣和活动的成本不会立刻成为问题。");else if(s.money<14)strong.push("家境让你会更认真考虑每一笔额外开支，也更早意识到家庭状况会影响选择。");else strong.push("家境比较普通，你开始学会在想要和必要之间做取舍。");let social=S.npcs.length?`这几个月里，你认识了${S.npcs.length}位主要同学：${S.npcs.join("、")}。其中关系最好的是${Object.keys(r).sort((a,b)=>(r[b]||0)-(r[a]||0))[0]}。`:"这几个月里，你还没有和特别多的人建立稳定联系。";let events=S.history.length?S.history.join("；"):"普通的上学、放学、考试和课间。";let best=Object.keys(r).sort((a,b)=>(r[b]||0)-(r[a]||0))[0];let relationText=best?`其中和${best}的关系最自然。`:"这段时间里还没有形成特别稳定的关系。";let yearSummary=(s.charm>=28?"你在人群里很容易被记住。":s.charm<14?"你更习惯先观察，再慢慢和熟悉的人靠近。":"你和周围人的相处比较自然。")+" "+(s.intel>=28?"学习上的反馈让你开始看到一些明确的方向。":s.intel<18?"学习压力提醒你，高中和初中确实是两种完全不同的生活。":"你逐渐摸到了适合自己的学习节奏。")+" "+(s.health>=28?"你有足够的精力把学习之外的生活也塞进去。":s.health<14?"疲惫感是这段高中生活里很真实的一部分。":"忙起来会累，但总体还能跟上。")+" "+(s.money>=28?"家庭条件让你在兴趣和活动上有更多选择。":s.money<14?"家里的经济变化让你更早开始考虑‘想要’和‘需要’。":"普通的家庭条件让你的选择更多取决于自己愿不愿意投入。");document.getElementById("resultText").innerHTML=`<b>${esc(S.name)}的高一上学期</b><br><br>${strong.map(x=>esc(x)).join("<br>")}<br><br>${esc(social)} ${esc(relationText)}<br><br><b>这一阶段的总结</b><br>${esc(yearSummary)}<br><br>社团：${esc(S.club||"未加入")}<br>特质：${traits.map(esc).join("、")}<br>兴趣：${S.interests.map(esc).join("、")||"无"}<br><br><b>这一阶段发生过的事</b><br>${esc(events)}<br><br><b>最终基础属性</b><br>魅力 ${s.charm} · 智力 ${s.intel} · 健康 ${s.health} · 家境 ${s.money}`}
+renderPool();checkPoints();
+</script>
+</html>
