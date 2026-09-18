@@ -1,0 +1,9 @@
+{
+  "name": "fuzhong-girl-simulator",
+  "version": "0.2.0",
+  "private": true,
+  "description": "女高模拟器原型：原生 HTML、CSS 与 JavaScript。",
+  "scripts": {
+    "test": "node tools/smoke-test.js && node tools/smoke-test.js --alternate"
+  }
+}
