@@ -60,7 +60,7 @@ function chooseFreshTraitTemplate(templates){
  const recent=state.recentChoiceIds.slice(-3);
  const fresh=templates.filter(template=>!recent.includes(template.id));
  const pool=fresh.length?fresh:templates;
- return pool[Math.floor(Math.random()*pool.length)];
+ return randomItem(pool);
 }
 
 function shouldOfferTraitChoice(set,context){
@@ -69,29 +69,62 @@ function shouldOfferTraitChoice(set,context){
  if(state.lastEventId===eventId)return false;
  state.lastEventId=eventId;
  if(context.forceTraitChoice){state.misses=0;return true;}
- const offered=state.misses>=1||Math.random()<(set.offerChance??0.5);
+ const offered=state.misses>=1||gameRandom()<(set.offerChance??0.5);
  if(offered)state.misses=0;
  else state.misses+=1;
  return offered;
 }
 
-function relationRollForChaos(activeTrait,npcName){
+function chaosCheck(activeTrait,npcName,context={}){
  const evolved=activeTrait==="古明地恋";
- const pool=evolved?[-1,0,1,1,1,2,2,3]:[-2,-1,-1,0,0,1,1,2];
  const affinity=NPCS[npcName]&&Number(NPCS[npcName].chaosAffinity)||0;
- const rolled=pool[Math.floor(Math.random()*pool.length)]+affinity;
- return Math.max(evolved?-1:-2,Math.min(evolved?3:2,rolled));
+ const familiarity=getRelation(npcName)>=5?1:0;
+ return resolveCheck({
+   difficulty:8,
+   modifiers:[
+     {label:`${npcName}适应度`,value:affinity},
+     {label:"已经熟悉",value:familiarity},
+     {label:"古明地恋",value:evolved?3:0}
+   ],
+   dice:context.checkDice,
+   label:`${activeTrait}反应`
+ });
 }
 
-function chaosReactionText(npcName,delta,evolved){
+function chaosRelationDelta(check,evolved){
+ if(evolved)return {failure:-1,setback:0,success:1,great:2}[check.grade];
+ return {failure:-3,setback:-1,success:1,great:2}[check.grade];
+}
+
+function chaosReactionText(npcName,check,evolved){
  if(evolved){
-   if(delta<0)return `这次节奏没有对上，${npcName}顺手把话题带回原处。没有人觉得刚才有什么不对。`;
-   if(delta===0)return `事情就这样自然地发生了。${npcName}继续和你聊天，仿佛这本来就是正常流程。`;
-   return `${npcName}理所当然地跟上了你的思路。等话题结束，你们之间反而多了一段只有彼此明白的经历。`;
+   if(check.grade==="failure")return `这次节奏确实没有对上。${npcName}把话题带回原处，气氛稍稍停顿，却没有人觉得刚才的事情值得追问。`;
+   if(check.grade==="setback")return `事情就这样自然地发生了。${npcName}继续和你聊天，仿佛这本来就是正常流程。`;
+   if(check.grade==="success")return `${npcName}理所当然地跟上了你的思路。等话题结束，你们之间多了一段只有彼此明白的经历。`;
+   return `${npcName}不仅接住了你的世界线，还擅自往里面添了一段。旁边的人听完全程，也只觉得你们本来就一直这样说话。`;
  }
- if(delta<0)return `${npcName}沉默了两秒，像是在重新评估刚才到底发生了什么。`;
- if(delta===0)return `${npcName}竟然把话接住了。场面没有变得更好或更坏，只是比刚才怪了一点。`;
- return `${npcName}先是愣住，随后真的笑了出来。你们之间的距离意外地近了一点。`;
+ if(check.grade==="failure")return `${npcName}没有笑。她确认你是认真的以后，干脆结束了这段对话；接下来几次在走廊碰见，她也明显没有主动靠近。`;
+ if(check.grade==="setback")return `${npcName}沉默了好一会儿，最后只回了一句“……所以呢？”这件事没有当场爆炸，但尴尬确实留了下来。`;
+ if(check.grade==="success")return `${npcName}先是愣住，随后真的笑了出来。这个突如其来的怪话成了你们之间的新话题。`;
+ return `${npcName}不仅接住了，还立刻把事情推向了更离谱的方向。附近的人开始围观，而你们已经拥有了第一个共同犯案现场。`;
+}
+
+function recordChaosImpression(npcName,check,evolved,template){
+ if(!S.npcImpressions||typeof S.npcImpressions!=="object")S.npcImpressions={};
+ const impression=S.npcImpressions[npcName]||{chaosUses:0,awkward:0,sharedJokes:0};
+ impression.chaosUses+=1;
+ if(check.grade==="failure"||check.grade==="setback")impression.awkward+=1;
+ if(check.grade==="success"||check.grade==="great")impression.sharedJokes+=1;
+ impression.lastGrade=check.grade;
+ S.npcImpressions[npcName]=impression;
+ if(!evolved&&check.grade==="failure"){
+   S.flags[`chaosAftermath:${npcName}`]={
+     choiceId:template.id,
+     term:S.term,
+     month:S.month,
+     pending:true
+   };
+ }
 }
 
 function advanceTraitProgress(set){
@@ -110,18 +143,20 @@ const TRAIT_CHOICE_RESOLVERS={
  chaosNpc(set,template,context,activeTrait){
    const npcName=context.npc;
    const evolved=activeTrait==="古明地恋";
-   const delta=relationRollForChaos(activeTrait,npcName);
-   S.npcRelation[npcName]=Math.max(0,(S.npcRelation[npcName]||1)+delta);
+   const check=chaosCheck(activeTrait,npcName,context);
+   const delta=chaosRelationDelta(check,evolved);
+   changeRelation(npcName,delta,`【${activeTrait}】判定`);
+   recordChaosImpression(npcName,check,evolved,template);
 
    const state=traitSystemState();
    state.recentChoiceIds.push(template.id);
    state.recentChoiceIds=state.recentChoiceIds.slice(-3);
 
    const unlocked=advanceTraitProgress(set);
-   const mood=delta>0?"关系似乎更近了":delta<0?"气氛短暂地变得有点微妙":"关系没有明显变化";
+   const mood=delta>0?"关系更近了":delta<0?"关系受到了影响":"关系没有变化";
    log(`【${activeTrait}】${template.label}；和【${npcName}】${mood}。`);
 
-   let result=`${template.result}\n\n${chaosReactionText(npcName,delta,evolved)}`;
+   let result=`${template.result}\n\n${chaosReactionText(npcName,check,evolved)}\n\n${formatCheck(check)}`;
    if(unlocked){
      result+=`\n\n某种东西越过了临界点。隐藏特质【${unlocked}】已解锁：以后类似的举动会被周围人自然接受，人际结果也更偏向积极。`;
    }
@@ -157,7 +192,7 @@ function injectTraitChoices(baseChoices,context={}){
  }).filter(Boolean);
 
  if(!candidates.length)return choices;
- const candidate=candidates[Math.floor(Math.random()*candidates.length)];
+ const candidate=randomItem(candidates);
  if(!shouldOfferTraitChoice(candidate.set,context))return choices;
  const template=chooseFreshTraitTemplate(candidate.templates);
  choices.push(buildInjectedTraitChoice(candidate.set,template,context,candidate.activeTrait));

@@ -1,6 +1,6 @@
 "use strict";
 
-const GAME_VERSION="0.3.0";
+const GAME_VERSION="0.4.0";
 
 /**
  * 开发期的轻量内容检查。
@@ -34,9 +34,23 @@ function validateGameData(){
    ...Object.values(ROUTES),
    RANDOM_EVENTS
  ];
+ const eventIds=[];
  eventGroups.flat().forEach((event,index)=>{
    if(!event||!event.title)warnings.push(`第 ${index+1} 个事件缺少标题。`);
-   if(event&&!Array.isArray(event.choices))warnings.push(`事件「${event.title||index+1}」缺少 choices 数组。`);
+   if(event&&event.id)eventIds.push(event.id);
+   if(event&&!Array.isArray(event.choices)&&typeof event.getChoices!=="function")warnings.push(`事件「${event.title||index+1}」缺少 choices 或 getChoices。`);
+ });
+ const repeatedEventIds=eventIds.filter((id,index)=>eventIds.indexOf(id)!==index);
+ if(repeatedEventIds.length)warnings.push("重复事件 ID："+[...new Set(repeatedEventIds)].join("、"));
+
+ // v0.4 纵向样板：九、十月的每一个选项都应留下可追踪的选择标识和影响说明。
+ [...FIXED[9],...FIXED[10]].forEach(event=>{
+   const choices=typeof event.getChoices==="function"?event.getChoices():event.choices;
+   (choices||[]).forEach((choice,index)=>{
+     const meta=choice&&choice[3];
+     if(!meta||!meta.id)warnings.push(`九十月事件「${event.title}」第 ${index+1} 个选项缺少持久化 id。`);
+     if(!meta||!meta.impact)warnings.push(`九十月事件「${event.title}」第 ${index+1} 个选项缺少影响说明。`);
+   });
  });
 
  if(warnings.length)console.warn("[女高模拟器：内容检查]",warnings);
@@ -47,7 +61,8 @@ function validateGameData(){
 globalThis.GameDebug=Object.freeze({
  version:GAME_VERSION,
  getState:()=>JSON.parse(JSON.stringify(S)),
- validate:validateGameData
+ validate:validateGameData,
+ check:options=>resolveCheck(options)
 });
 
 validateGameData();

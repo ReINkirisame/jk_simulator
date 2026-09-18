@@ -42,6 +42,16 @@
 6. 在 GitHub Desktop 提交，Summary 可写：`feat: add trait-specific choices`。
 7. `Publish branch` → `Create Pull Request`；另一人试玩确认后再合并。
 
+### 已经上传过 0.3，怎样更新到 0.4
+
+1. 在 GitHub Desktop 切回 `main`，先 `Fetch origin` / `Pull origin`。
+2. 新建分支：`feature/vertical-slice-v0.4`。
+3. 把 0.4 压缩包内项目文件夹中的全部内容复制到仓库根目录，覆盖同名文件；不要删除 `.git`。
+4. 重点试玩三件事：普通癫佬大失败、九十月阶段小结、月考与期末考试。
+5. 有 Node.js 时运行 `npm test`；三条流程都通过后再提交。
+6. Commit Summary 可写：`feat: add resolution system and vertical slice`。
+7. 推送、创建 PR，让另一人至少用不同开局再玩一次九、十月后合并。
+
 ## 三、邀请另一位合作者
 
 由仓库创建者进入 GitHub 仓库：
