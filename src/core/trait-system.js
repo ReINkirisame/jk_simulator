@@ -17,7 +17,7 @@ function getTraitXp(name){
 
 function getTraitLevel(name){
  const xp=getTraitXp(name);
- if(name==="癫佬")return xp>=4?3:xp>=2?2:1;
+ if(name==="癫佬")return xp>=8?3:xp>=4?2:1;
  return 1;
 }
 
@@ -33,7 +33,8 @@ function getVisibleTraitBadges(){
      return {label:"古明地恋 · 隐藏",className:"hidden-trait",title:HIDDEN_TRAITS["古明地恋"].desc};
    }
    if(name==="癫佬"){
-     return {label:`癫佬 Lv.${getTraitLevel(name)}`,className:"progress-trait",title:"在人物互动中偶尔出现专属选项。"};
+     const desc=["","偶尔做出让人摸不着头脑的举动。","身边的人似乎开始习惯了。","大家已经懒得追究你的行为逻辑了。"];
+     return {label:`癫佬 Lv.${getTraitLevel(name)}`,className:"progress-trait",title:desc[getTraitLevel(name)]+"出现时替换一个正常选项；有效成长每月最多一次。"};
    }
    return {label:name,className:"",title:""};
  });
@@ -84,6 +85,7 @@ function chaosCheck(activeTrait,npcName,context={}){
    modifiers:[
      {label:`${npcName}适应度`,value:affinity},
      {label:"已经熟悉",value:familiarity},
+     {label:"场合不合适",value:context.serious?-1:0},
      {label:"古明地恋",value:evolved?3:0}
    ],
    dice:context.checkDice,
@@ -117,6 +119,7 @@ function recordChaosImpression(npcName,check,evolved,template){
  if(check.grade==="success"||check.grade==="great")impression.sharedJokes+=1;
  impression.lastGrade=check.grade;
  S.npcImpressions[npcName]=impression;
+ if(check.grade==="failure")changeTrust(npcName,-1,"没有顾及对方的感受");
  if(!evolved&&check.grade==="failure"){
    S.flags[`chaosAftermath:${npcName}`]={
      choiceId:template.id,
@@ -127,16 +130,43 @@ function recordChaosImpression(npcName,check,evolved,template){
  }
 }
 
-function advanceTraitProgress(set){
+function advanceTraitProgress(set,context={}){
  if(set.evolution&&hasHiddenTrait(set.evolution.trait))return null;
- const next=getTraitXp(set.trait)+1;
- S.traitProgress[set.trait]=next;
- if(set.evolution&&next>=set.evolution.xp){
-   S.hiddenTraits.push(set.evolution.trait);
-   log(`隐藏特质解锁：【${set.evolution.trait}】。`);
-   return set.evolution.trait;
+ const record=S.traitMilestones;
+ const npc=context.npc,scene=context.sceneCategory;
+ if(NPCS[npc]&&!record.npcs.includes(npc))record.npcs.push(npc);
+ if(["classroom","campus","club","holiday"].includes(scene)&&!record.scenes.includes(scene))record.scenes.push(scene);
+ const key=monthKey();
+ if(!record.months.includes(key)){
+  record.months.push(key);S.traitProgress[set.trait]=getTraitXp(set.trait)+1;
+  log("【癫佬】留下了一次跨月习惯记录。本月再使用仍有后果，但不重复成长。");
  }
  return null;
+}
+
+function chaosEvolutionEligibility(){
+ const rule=TRAIT_CHOICE_SETS[0].evolution,record=S.traitMilestones;
+ return {time:S.calendarIndex>=rule.earliestIndex,xp:getTraitXp("癫佬")>=rule.xp,
+  people:record.npcs.length>=rule.minNpcs,scenes:record.scenes.length>=rule.minScenes,
+  waiting:S.calendarIndex<(S.flags.koishiDeferredUntil||0)};
+}
+function tryChaosEvolution(done){
+ if(!hasTrait("癫佬")||hasHiddenTrait("古明地恋"))return false;
+ const e=chaosEvolutionEligibility();
+ if(!e.time||!e.xp||!e.people||!e.scenes||e.waiting)return false;
+ const people=S.traitMilestones.npcs.slice(0,4).join("、");
+ showChoices("长期特质 · 专属事件","大家已经习惯了",`${S.term.includes("寒假")?"寒假聚会时":"放学后的聚会里"}，你突然宣称，这张桌子其实是一个尚未启航的太空站。\n\n没有人追问原因。有人递来一张纸让你画航线，有人把饮料往桌边挪，给不存在的操作台腾出位置。${people}都在场。\n\n你想起那些分散在课堂、社团和假期里的荒唐时刻。那时候总有人愣住，等你解释；现在，航线图已经传到了桌子另一头。`,[
+  ["就照平常的样子继续","你开始分配舰桥值日。",()=>{
+   S.hiddenTraits.push("古明地恋");S.flags.koishiAwakenedAt={year:S.year,month:S.month,index:S.calendarIndex};
+   rememberImpact("koishi-awakening",`${S.term}${S.month}月，获得隐藏特质【古明地恋】`);
+   return "她们很自然地接了下去。你甚至没找到一个值得郑重宣布变化的瞬间。\n\n获得隐藏特质【古明地恋】：怪举动更容易被接住，但仍会替换正常选项，也仍然可能让人不舒服。";
+  },{id:"accept",protected:true}],
+  ["今天先收一收，好好听她们说","你把航线图翻过来，问起大家真正想聊的事。",()=>{
+   S.flags.koishiDeferredUntil=S.calendarIndex+2;changeResource("stress",-4,"暂时放下表演");
+   return "你决定先停在这里。已经形成的习惯不会消失，至少两个月后仍有机会发生变化。";
+  },{id:"defer",protected:true}]
+ ],done,{eventId:"koishi-awakening",allowTraitChoices:false});
+ return true;
 }
 
 const TRAIT_CHOICE_RESOLVERS={
@@ -152,14 +182,13 @@ const TRAIT_CHOICE_RESOLVERS={
    state.recentChoiceIds.push(template.id);
    state.recentChoiceIds=state.recentChoiceIds.slice(-3);
 
-   const unlocked=advanceTraitProgress(set);
+   advanceTraitProgress(set,context);
+   rememberChoice(context.eventId||"chaos",template.id,template.label,["跳脱"],`对${npcName}做出了跳脱举动（${check.gradeLabel}）`);
+   changeResource("stress",check.grade==="failure"?5:-2,"突如其来的举动");
    const mood=delta>0?"关系更近了":delta<0?"关系受到了影响":"关系没有变化";
    log(`【${activeTrait}】${template.label}；和【${npcName}】${mood}。`);
 
    let result=`${template.result}\n\n${chaosReactionText(npcName,check,evolved)}\n\n${formatCheck(check)}`;
-   if(unlocked){
-     result+=`\n\n某种东西越过了临界点。隐藏特质【${unlocked}】已解锁：以后类似的举动会被周围人自然接受，人际结果也更偏向积极。`;
-   }
    return result;
  }
 };
@@ -176,25 +205,30 @@ function buildInjectedTraitChoice(set,template,context,activeTrait){
 }
 
 /**
- * 为现有事件追加最多一个特质专属选项。
+ * 替换最多一个显式允许替换的普通选项。关键决定与单选继续页不参与。
  * context 示例：
  * {allowTraitChoices:true,tags:["npc","social"],npc:"中二病",eventId:"npc-talk-1"}
  */
 function injectTraitChoices(baseChoices,context={}){
  const choices=Array.isArray(baseChoices)?[...baseChoices]:[];
- if(!context.allowTraitChoices)return choices;
+ if(!context.allowTraitChoices||choices.length<2)return choices;
 
  const candidates=TRAIT_CHOICE_SETS.map(set=>{
    const activeTrait=activeTraitForSet(set);
    if(!activeTrait||!contextHasTags(context,set.requiredTags||[]))return null;
    const templates=availableTraitTemplates(set,activeTrait);
-   return templates.length?{set,activeTrait,templates}:null;
+   const slots=choices.map((choice,index)=>({meta:choice[3]||{},index})).filter(({meta})=>meta.replaceable===true&&!meta.protected&&(set.replaceRoles||[]).includes(meta.role));
+   return templates.length&&slots.length?{set,activeTrait,templates,slots}:null;
  }).filter(Boolean);
 
  if(!candidates.length)return choices;
  const candidate=randomItem(candidates);
  if(!shouldOfferTraitChoice(candidate.set,context))return choices;
  const template=chooseFreshTraitTemplate(candidate.templates);
- choices.push(buildInjectedTraitChoice(candidate.set,template,context,candidate.activeTrait));
+ const slot=randomItem(candidate.slots).index;
+ const replaced=choices[slot];
+ choices[slot]=buildInjectedTraitChoice(candidate.set,template,context,candidate.activeTrait);
+ choices[slot][3].replacedId=replaced[3].id||String(slot);
+ choices[slot][3].replacedLabel=replaced[0];
  return choices;
 }

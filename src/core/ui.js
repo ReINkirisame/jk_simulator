@@ -11,9 +11,16 @@ function relationLabel(value){
 }
 
 function update(){
- $("charm").textContent=S.stats.charm;$("intel").textContent=S.stats.intel;
- $("health").textContent=S.stats.health;$("money").textContent=S.stats.money;
+ Object.keys(ATTRIBUTES).forEach(key=>{
+  $(key).textContent=S.stats[key];
+  if(key!=="appearance")$("xp"+key[0].toUpperCase()+key.slice(1)).textContent=`经验 ${S.growth.xp[key]||0}/4`;
+ });
+ $("appearanceNote").textContent=S.flags.groomingMonth===monthKey()?`仪容 ${formatSigned(S.flags.grooming||0)}`:"缓慢变化";
  $("monthLabel").textContent=S.term+(S.month?(" · "+S.month+"月"):"");
+ $("stageLabel").textContent=CALENDAR[S.calendarIndex]?.stage||"毕业";
+ $("timelineFill").style.width=`${Math.round((S.calendarIndex+1)/CALENDAR.length*100)}%`;
+ $("pageMark").textContent=`${String(S.calendarIndex+1).padStart(2,"0")} / ${CALENDAR.length}`;
+ $("resourceRow").innerHTML=`<span>家境 · ${esc(FAMILY_BACKGROUNDS[S.family]?.label||"普通")}</span><span>零花钱 ${S.resources.cash}</span><span class="${S.resources.energy<30?"resource-warning":""}">精力 ${S.resources.energy}/100</span><span class="${S.resources.stress>=65?"resource-warning":""}">压力 ${S.resources.stress}/100</span>`;
  const traitBadges=typeof getVisibleTraitBadges==="function"
    ?getVisibleTraitBadges()
    :S.traits.map(i=>({label:S.pool[i][0],className:"",title:""}));
@@ -25,8 +32,14 @@ function update(){
  }).join("");
  $("npcList").innerHTML=S.npcs.length?S.npcs.map(n=>{
     const d=NPCS[n],r=getRelation(n);
-    return `<div class="npc"><b>${esc(n)}</b><span>${esc(d.tag)}<br>${esc(d.desc)}<br>关系：${esc(relationLabel(r))}</span></div>`;
+    const goal=typeof npcGoal==="function"?npcGoal(n):d.tag;
+    return `<div class="npc"><b>${esc(n)}</b><span>${esc(relationLabel(r))} · 信任 ${S.npcTrust[n]||0}<br><span class="npc-goal">${esc(goal)}</span></span></div>`;
  }).join(""):"<div class='notice'>暂时还没有特别认识的人。</div>";
+ $("ongoing").innerHTML=[`社团：${S.club||"还没有决定"}`,`路线：${S.route||"探索中"}`,
+  S.project?`共同项目：${S.project.name} · ${S.project.progress}份进展${S.project.result?` · ${S.project.result}`:""}`:"高二会开始一项共同项目。",
+  S.memories.length?S.memories[S.memories.length-1].text:"还没有留下特别的记忆。"
+ ].map(line=>`<div class="ongoing-line">${esc(line)}</div>`).join("");
+ if(typeof chaosEvolutionEligibility==="function")$("debugInfo").textContent=`${S.debug?"调试局（不写入正常存档）":"正常游戏"} · 种子 ${S.rng.seed}\n癫值 ${getTraitXp("癫佬")}；人物 ${S.traitMilestones.npcs.length}；场景 ${S.traitMilestones.scenes.length}\n进化条件：${JSON.stringify(chaosEvolutionEligibility())}`;
 }
 
 function renderPool(){
@@ -34,22 +47,25 @@ function renderPool(){
  const featured=TRAITS.find(trait=>trait[0]==="癫佬");
  const others=TRAITS.filter(trait=>trait!==featured);
  S.pool=shuffle(featured?[featured,...shuffle(others).slice(0,9)]:shuffle(others).slice(0,10));S.traits=[];
- $("traitPool").innerHTML=S.pool.map((t,i)=>`<div class="trait" data-i="${i}" onclick="toggleTrait(${i})"><b>${esc(t[0])}</b><span>${esc(t[1])}</span></div>`).join("");
+ $("traitPool").innerHTML=S.pool.map((t,i)=>`<button type="button" class="trait" data-i="${i}" aria-pressed="false" onclick="toggleTrait(${i})"><b>${esc(t[0])}</b><span>${esc(t[1])}</span></button>`).join("");
 }
 function toggleTrait(i){
  const e=document.querySelector(`[data-i="${i}"]`);
  if(S.traits.includes(i)){S.traits=S.traits.filter(x=>x!==i);e.classList.remove("selected");}
  else if(S.traits.length<3){S.traits.push(i);e.classList.add("selected");}
+ e.setAttribute("aria-pressed",String(S.traits.includes(i)));
 }
 
 /**
  * 显示一段事件和它的选项。
  * 选项格式：[按钮文字, 默认结果文字, 可选的效果函数, 可选的界面元数据]
  * 效果函数返回字符串时优先显示该字符串；未返回时显示默认结果文字。
- * context 用来描述当前事件环境，特质系统会据此追加至多一个专属选项。
+ * context 描述环境；特质系统最多替换一个明确标为 replaceable 的选项。
  */
 function showChoices(tag,title,text,choices,next,context={}){
  const box=$("choices");
+ resetScreenActions();
+ $("effectFeedback").innerHTML="";
  $("tag").textContent=tag||"";
  $("title").textContent=title||"";
  $("text").textContent=text||"";
@@ -61,44 +77,46 @@ function showChoices(tag,title,text,choices,next,context={}){
  if(!list.length){
    const n=document.createElement("button");
    n.className="primary";n.type="button";n.textContent="继续";
-   n.onclick=()=>{n.disabled=true;box.innerHTML="";safeNext(next)};
+   bindAction(n,`continue:${tag}:${title}`,()=>{n.disabled=true;box.innerHTML="";safeNext(next)});
    box.appendChild(n);update();return;
  }
 
  let locked=false;
- list.forEach((c)=>{
+ list.forEach((c,index)=>{
    const b=document.createElement("button");
    b.type="button";b.textContent=c&&c[0]?c[0]:"继续";
    if(c&&c[3]&&c[3].className)b.classList.add(c[3].className);
-   b.onclick=()=>{
+   const meta=c&&c[3]||{};
+   b.disabled=Boolean(meta.disabled);
+   if(meta.hint)b.title=meta.hint;
+   if(meta.replacedLabel)b.title=`特质改写：本次替代「${meta.replacedLabel}」。不获得原选项的收益。`;
+   bindAction(b,`choice:${context.eventId||tag+":"+title}:${meta.choiceId||meta.id||index}`,()=>{
      if(locked)return;
      locked=true;
+     const before=effectSnapshot();
      [...box.querySelectorAll("button")].forEach(x=>x.disabled=true);
      box.innerHTML="";
      let result="";
-     try{
        if(c&&typeof c[2]==="function")result=c[2]({
          next:()=>safeNext(next),
          context,
          choice:c
        });
-     }catch(e){
-       console.error("事件选项执行失败：",e);
-       result="这一段出现了小故障，但你的选择已经生效。";
-     }
      if(result==="HANDLED")return;
 
      // 原草稿存了大量 c[1] 结果文字，但通用界面没有显示它们。
      // 这里在效果函数没有返回文字时使用 c[1]，让选择真正得到反馈。
      if(!(typeof result==="string"&&result)&&c&&typeof c[1]==="string")result=c[1];
      if(typeof result==="string"&&result)$("text").textContent=result;
+     showEffectFeedback(before);
 
+     resetScreenActions();
      const n=document.createElement("button");
      n.className="primary";n.type="button";n.textContent="继续";
-     n.onclick=()=>{if(n.disabled)return;n.disabled=true;box.innerHTML="";safeNext(next)};
+     bindAction(n,`result:${context.eventId||tag+":"+title}`,()=>{if(n.disabled)return;n.disabled=true;box.innerHTML="";safeNext(next)});
      box.appendChild(n);
      update();
-   };
+   });
    box.appendChild(b);
  });
  update();
@@ -107,29 +125,35 @@ function showChoices(tag,title,text,choices,next,context={}){
 // 用于成绩单、阶段小结等“阅读后继续”的页面，避免把“收好/继续”拆成两次点击。
 function showContinueScreen(tag,title,text,buttonText,next){
  const box=$("choices");
+ resetScreenActions();
+ $("effectFeedback").innerHTML="";
  $("tag").textContent=tag||"";
  $("title").textContent=title||"";
  $("text").textContent=text||"";
  box.innerHTML="";
  const button=document.createElement("button");
  button.className="primary";button.type="button";button.textContent=buttonText||"继续";
- button.onclick=()=>{if(button.disabled)return;button.disabled=true;box.innerHTML="";safeNext(next)};
+ bindAction(button,`continue:${tag}:${title}`,()=>{if(button.disabled)return;button.disabled=true;box.innerHTML="";safeNext(next)});
  box.appendChild(button);
  update();
 }
 
 function safeNext(next){
- try{
    if(typeof next==="function")next();
    else finishMonth();
- }catch(e){
-   console.error("事件继续流程失败：",e);
-   const box=$("choices");box.innerHTML="";
-   $("tag").textContent="继续游戏";
-   $("title").textContent="事件已经结束";
-   $("text").textContent="刚才的事件已经记录下来，现在继续高中生活。";
-   const n=document.createElement("button");n.className="primary";n.type="button";n.textContent="继续游戏";
-   n.onclick=()=>{n.disabled=true;box.innerHTML="";try{finishMonth()}catch(_){location.reload()}};
-   box.appendChild(n);
- }
+}
+
+function effectSnapshot(){return JSON.parse(JSON.stringify({stats:S.stats,xp:S.growth.xp,resources:S.resources,relations:S.npcRelation,trust:S.npcTrust,memories:S.memories.length,progress:S.project?.progress||0}));}
+function showEffectFeedback(before){
+ const items=[];
+ const add=(label,delta,negative=delta<0)=>{if(delta)items.push({label:label+formatSigned(delta),negative});};
+ Object.entries(ATTRIBUTES).forEach(([key,rule])=>{
+  add(rule.label,S.stats[key]-(before.stats[key]||0));
+  if(S.stats[key]===before.stats[key])add(rule.label+"经验",(S.growth.xp[key]||0)-(before.xp[key]||0));
+ });
+ Object.entries({cash:"零花钱",energy:"精力",stress:"压力"}).forEach(([key,label])=>add(label,S.resources[key]-before.resources[key],key==="stress"?S.resources[key]>before.resources[key]:S.resources[key]<before.resources[key]));
+ S.npcs.forEach(name=>{add(name+"关系",getRelation(name)-(before.relations[name]??1));add(name+"信任",(S.npcTrust[name]||0)-(before.trust[name]||0));});
+ add("项目进展",(S.project?.progress||0)-before.progress);
+ if(S.memories.length>before.memories)items.push({label:"已留下后续记忆",negative:false});
+ $("effectFeedback").innerHTML=items.map(item=>`<span class="effect-chip${item.negative?" negative":""}">${esc(item.label)}</span>`).join("");
 }

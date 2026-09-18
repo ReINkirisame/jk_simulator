@@ -1,11 +1,11 @@
 "use strict";
 
 // 特质专属选项的数据层。
-// 每组规则描述“什么特质能在什么场景出现什么额外选项”。
+// 每组规则描述“什么特质能在什么场景替换哪个普通选项”。
 // 以后增加别的特质时，优先在这里追加规则，不要在具体事件里散落 hasTrait 判断。
 const HIDDEN_TRAITS={
  "古明地恋":{
-   desc:"你做出再跳脱的举动，周围人也会自然地接受；人际结果更偏向积极。"
+   desc:"长期相处让大家更容易接住你的怪举动；仍有误会的可能，也仍会占用正常选项。"
  }
 };
 
@@ -16,7 +16,8 @@ const TRAIT_CHOICE_SETS=[
    resolver:"chaosNpc",
    requiredTags:["npc","social"],
    offerChance:0.55,
-   evolution:{trait:"古明地恋",xp:4},
+   replaceRoles:["bold","social"],
+   evolution:{trait:"古明地恋",xp:12,earliestIndex:16,minNpcs:4,minScenes:3},
    choices:[
      {
        id:"dian-broadcast",

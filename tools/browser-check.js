@@ -1,0 +1,79 @@
+"use strict";
+// 可选真实浏览器检查：需要本机已经安装 playwright 和 Chromium。
+const {chromium}=require("playwright");
+const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path");
+const base=process.argv[2]||"http://127.0.0.1:4173/";
+const output=path.resolve(__dirname,"../../qa-v0.5.0");
+fs.mkdirSync(output,{recursive:true});
+(async()=>{
+ const browser=await chromium.launch({headless:true});
+ try{
+  const context=await browser.newContext({viewport:{width:1280,height:900},acceptDownloads:true});
+  const page=await context.newPage(),errors=[];page.on("pageerror",e=>errors.push(e.message));
+  await page.goto(base);await page.locator(".seed-settings summary").click();await page.locator("#seedInput").fill("606");
+  await page.getByRole("button",{name:"应用种子并重抽特质",exact:true}).click();
+  await page.locator("#playerName").fill("林间");
+  await page.locator(".trait").filter({hasText:"癫佬"}).click();
+  await page.locator('.trait[aria-pressed="false"]').first().click();
+  await page.locator('.trait[aria-pressed="false"]').first().click();
+  await page.screenshot({path:path.join(output,"setup-desktop.png"),fullPage:true});
+  await page.getByRole("button",{name:"翻开第一页 · 开始高中生活",exact:true}).click();
+  await page.locator("#game").waitFor({state:"visible"});
+  await page.screenshot({path:path.join(output,"game-desktop.png"),fullPage:true});
+  let count=0,evolution=null,traitShot=false;
+  for(;count<380;count++){
+   if(await page.evaluate(()=>GameDebug.getState().phase==="graduated"))break;
+   const title=await page.locator("#title").textContent();
+   if(title==="大家已经习惯了"){
+    evolution=await page.evaluate(()=>({year:GameDebug.getState().year,month:GameDebug.getState().month,index:GameDebug.getState().calendarIndex}));
+    await page.screenshot({path:path.join(output,"evolution.png"),fullPage:true});
+   }
+   const trait=page.locator("#choices button.trait-choice");
+   if(!traitShot&&await trait.count()){
+    await page.screenshot({path:path.join(output,"trait-replacement.png"),fullPage:true});traitShot=true;
+   }
+   if(count===42){
+    const before=await page.evaluate(()=>JSON.stringify(GameDebug.getState()));
+    const text=await page.locator("#text").textContent();
+    await page.reload();await page.locator("#resumeSetup").click();
+    assert.equal(await page.evaluate(()=>JSON.stringify(GameDebug.getState())),before);
+    assert.equal(await page.locator("#text").textContent(),text);
+   }
+   // 前十步以真实点击检验交互，其余仍通过DOM按钮执行原始事件处理器。
+   if(count<10){
+    const button=await trait.count()?trait.first():page.locator("#choices button:not(:disabled)").first();
+    await button.click();
+   }else{
+    await page.evaluate(()=>{
+     const buttons=[...document.querySelectorAll("#choices button")].filter(b=>!b.disabled);
+     const button=buttons.find(b=>b.classList.contains("trait-choice"))||buttons[0];
+     if(!button)throw new Error("No active choice button");
+     button.click();
+    });
+   }
+  }
+  assert(count<380,"did not graduate");assert(evolution&&evolution.index>=16);assert.equal(errors.length,0,errors.join("\n"));
+  await page.screenshot({path:path.join(output,"graduation.png"),fullPage:true});
+  const state=await page.evaluate(()=>GameDebug.getState());
+  const [download]=await Promise.all([page.waitForEvent("download"),page.getByRole("button",{name:"导出这段生活",exact:true}).click()]);
+  const exported=JSON.parse(fs.readFileSync(await download.path(),"utf8"));assert.equal(exported.version,"0.5.0");
+  await page.getByRole("button",{name:"回看人物与记录",exact:true}).click();
+  await page.getByRole("button",{name:"回到毕业画像",exact:true}).click();
+  await page.reload();await page.locator("#resumeSetup").click();
+  assert.deepEqual(await page.evaluate(()=>GameDebug.getState()),state);
+
+  const mobile=await browser.newContext({viewport:{width:390,height:844},isMobile:true,deviceScaleFactor:1});
+  const m=await mobile.newPage();m.on("pageerror",e=>errors.push(e.message));await m.goto(base);
+  assert(await m.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),"mobile overflow");
+  await m.screenshot({path:path.join(output,"setup-mobile.png"),fullPage:true});
+  await m.locator("#playerName").fill("零学力测试");
+  await m.getByRole("button",{name:"外貌型",exact:true}).click();
+  for(let i=0;i<3;i++)await m.locator('.trait[aria-pressed="false"]').first().click();
+  await m.getByRole("button",{name:"翻开第一页 · 开始高中生活",exact:true}).click();
+  await m.locator("#choices button").first().click();
+  assert(await m.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),"game mobile overflow");
+  await m.screenshot({path:path.join(output,"game-mobile.png"),fullPage:true});
+  assert.equal(errors.length,0,errors.join("\n"));
+  console.log(JSON.stringify({clicks:count,evolution,graduationScore:state.exam.graduation,errors,screenshots:output}));
+ }finally{await browser.close();}
+})().catch(error=>{console.error(error);process.exitCode=1;});
