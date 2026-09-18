@@ -9,6 +9,7 @@ function startGame(){
  S.birthdayMonth=Math.max(1,Math.min(12,parseInt($("birthdayMonth").value,10)||1));
  S.birthdayDay=Math.max(1,Math.min(31,parseInt($("birthdayDay").value,10)||1));
  S.phase="month";S.month=9;S.term="高一上";S.npcs=[];S.npcRelation={};S.history=[];S.usedRandom=[];S.usedRoute={};S.flags={};S.exam={};
+ S.traitProgress={};S.hiddenTraits=[];S.traitChoiceState={misses:0,lastEventId:null,recentChoiceIds:[]};
  $("setup").classList.add("hidden");$("result").classList.add("hidden");$("game").classList.remove("hidden");
  $("playerNameLabel").textContent=n;$("log").innerHTML="";
  log("你开始了高一上学期的生活。");log("初始特质："+S.traits.map(i=>S.pool[i][0]).join("、"));
@@ -122,7 +123,8 @@ function npcInteraction(name,done){
         return o[1];
       }
     ]),
-    done
+    done,
+    {allowTraitChoices:true,tags:["npc","social"],npc:name,eventId:`npc-talk:${S.term}:${S.month}:${name}`}
   );
 }
 
@@ -295,7 +297,12 @@ function winterSelf(){
 function winterNPC(){
  const name=S.npcs.length?S.npcs[Math.floor(Math.random()*S.npcs.length)]:"家人";
  const text=name==="家人"?"过年期间你和家里人聊了聊新学期。":"你和"+name+"约了一次见面。你们没有讨论什么宏大计划，只是聊最近的学校生活和寒假里做过的事情。";
- showChoices("寒假","和NPC互动",text,[["一起走走","你们边走边聊。",()=>name==="家人"?"家里人提醒你新学期别把自己逼得太紧。":"你发现寒假见面以后，下学期再见到对方时已经不会尴尬。"],["坐下来聊会儿","你们找了个安静地方坐着。",()=>name==="家人"?"你第一次认真听家里人说起对你的期待。":"你们聊了很久，最后约好开学以后再继续这个话题。"]],()=>{S.month=3;S.term="高一下";startMonth()});
+ showChoices("寒假","和NPC互动",text,[["一起走走","你们边走边聊。",()=>name==="家人"?"家里人提醒你新学期别把自己逼得太紧。":"你发现寒假见面以后，下学期再见到对方时已经不会尴尬。"],["坐下来聊会儿","你们找了个安静地方坐着。",()=>name==="家人"?"你第一次认真听家里人说起对你的期待。":"你们聊了很久，最后约好开学以后再继续这个话题。"]],()=>{S.month=3;S.term="高一下";startMonth()},name==="家人"?{}:{
+   allowTraitChoices:true,
+   tags:["npc","social","holiday"],
+   npc:name,
+   eventId:`winter-talk:${name}`
+ });
 }
 
 /* ---------- 社团活动周 ---------- */
@@ -433,7 +440,8 @@ function runRandom(slot,done){
               return o[1];
             }
           ]),
-          done
+          done,
+          {allowTraitChoices:true,tags:["npc","social"],npc:name,eventId:`npc-talk:${S.term}:${S.month}:${name}`}
         );
       }
     );
