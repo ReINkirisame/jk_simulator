@@ -1,6 +1,6 @@
 "use strict";
 
-const GAME_VERSION="0.4.0";
+const GAME_VERSION="0.5.0";
 
 /**
  * 开发期的轻量内容检查。
@@ -42,6 +42,11 @@ function validateGameData(){
  });
  const repeatedEventIds=eventIds.filter((id,index)=>eventIds.indexOf(id)!==index);
  if(repeatedEventIds.length)warnings.push("重复事件 ID："+[...new Set(repeatedEventIds)].join("、"));
+ const storyEvents=[PHOTO_EVENT,...Object.values(Y2_EVENTS),...Object.values(Y3_EVENTS)];
+ storyEvents.forEach(event=>warnings.push(...validateStoryEvent(event)));
+ const storyIds=storyEvents.map(event=>event.id);
+ if(new Set(storyIds).size!==storyIds.length)warnings.push("新事件ID重复");
+ if(CALENDAR.length!==34||CALENDAR[16].year!==2||CALENDAR[16].month!==1)warnings.push("日历或高二寒假门槛错误");
 
  // v0.4 纵向样板：九、十月的每一个选项都应留下可追踪的选择标识和影响说明。
  [...FIXED[9],...FIXED[10]].forEach(event=>{
@@ -62,9 +67,20 @@ globalThis.GameDebug=Object.freeze({
  version:GAME_VERSION,
  getState:()=>JSON.parse(JSON.stringify(S)),
  validate:validateGameData,
- check:options=>resolveCheck(options)
+ check:options=>{S.debug=true;return resolveCheck(options);},
+ jump:debugJump,
+ prepareChaos:debugPrepareChaos,
+ evolution:chaosEvolutionEligibility,
+ setStat:(key,value)=>{if(ATTRIBUTES[key]&&Number.isInteger(value)&&value>=0&&value<=(key==="appearance"?20:30)){S.debug=true;S.stats[key]=value;update();}}
 });
 
 validateGameData();
+const initialSeed="campus-"+Date.now().toString(36);
+setGameSeed(initialSeed);
+$("seedInput").value=initialSeed;
 renderPool();
+Object.values(ATTRIBUTES).forEach(rule=>$(rule.input).addEventListener("input",refreshAllocation));
+$("debugMonth").innerHTML=CALENDAR.map((p,index)=>'<option value="'+index+'">'+p.term+" "+p.month+"月</option>").join("");
+refreshAllocation();refreshFamily();
+try{$("resumeSetup").disabled=!localStorage.getItem(SAVE_KEY);}catch{$("resumeSetup").disabled=true;}
 update();

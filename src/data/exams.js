@@ -8,9 +8,14 @@ const EXAM_STRATEGIES={
 };
 
 const EXAM_BASE_SCORES={
- monthly:470,
- midterm:480,
- term1:485,
- opening:475,
- term2:500
+ monthly:335,
+ midterm:350,
+ term1:360,
+ opening:350,
+ term2:365,
+ "y2-term1":360,
+ "y2-term2":365,
+ "y3-monthly1":360,
+ "y3-monthly2":365,
+ graduation:370
 };

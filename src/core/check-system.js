@@ -8,7 +8,8 @@ const CHECK_LABELS={
 };
 
 function statCheckModifier(value){
- return Math.max(-2,Math.min(3,Math.floor(((Number(value)||0)-10)/5)));
+ const n=Math.max(0,Number(value)||0);
+ return n>=25?4:n>=20?3:Math.floor(n/4)-2;
 }
 
 function checkGrade(margin){
@@ -25,7 +26,7 @@ function checkGrade(margin){
 function resolveCheck({
  stat=null,
  statValue=null,
- statLabel="属性",
+ statLabel=null,
  difficulty=7,
  modifiers=[],
  dice=null,
@@ -37,7 +38,7 @@ function resolveCheck({
  const normalized=[];
  if(stat||statValue!==null){
    const value=statValue!==null?statValue:S.stats[stat];
-   normalized.push({label:statLabel,value:statCheckModifier(value)});
+   normalized.push({label:statLabel||(ATTRIBUTES[stat]?.label??"综合能力"),value:statCheckModifier(value)});
  }
  (Array.isArray(modifiers)?modifiers:[]).forEach(item=>{
    if(!item)return;
@@ -62,5 +63,5 @@ function formatCheck(result,{showDice=true}={}){
    ?"，"+result.modifiers.map(item=>`${item.label}${formatSigned(item.value)}`).join("，")
    :"";
  const diceText=showDice?`2d6=${result.dice[0]}+${result.dice[1]}，`:"";
- return `【${result.gradeLabel}】${diceText}合计${result.total}${modifierText}；难度${result.difficulty}`;
+ return `【${result.gradeLabel}】${diceText}${modifierText.replace(/^，/,"")} → 合计${result.total}；难度${result.difficulty}`;
 }

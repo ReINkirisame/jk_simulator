@@ -1,101 +1,65 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="一款以高中三年生活为目标的女高养成模拟器原型。">
-  <title>女高模拟器</title>
-  <link rel="stylesheet" href="./styles.css">
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <meta name="description" content="附中女高模拟器：从九月入学到六月告别，用选择留下自己的三年。">
+ <title>女高模拟器 · 0.5.0</title>
+ <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
 <div class="wrap">
-
-  <section id="setup">
-    <div class="card">
-      <h1>女高模拟器</h1>
-      <h2>先给她起个名字</h2>
-      <input id="playerName" type="text" maxlength="12" placeholder="输入名字" class="name-input">
-
-      <h2>本局抽到的10个特质（请选择3个）</h2>
-      <div id="traitPool" class="rollgrid"></div>
-
-      <div class="points">可分配点数：<b id="remain">40</b> / 40</div>
-      <div class="inputs">
-        <label>魅力<input id="iCharm" type="number" min="0" max="40" value="10"></label>
-        <label>智力<input id="iIntel" type="number" min="0" max="40" value="10"></label>
-        <label>健康<input id="iHealth" type="number" min="0" max="40" value="10"></label>
-        <label>家境<input id="iMoney" type="number" min="0" max="40" value="10"></label>
-      </div>
-
-      <div class="section-gap">
-        <h2>生日</h2>
-        <div class="inputs birthday-inputs">
-          <label>月份<input id="birthdayMonth" type="number" min="1" max="12" value="1"></label>
-          <label>日期<input id="birthdayDay" type="number" min="1" max="31" value="1"></label>
-        </div>
-      </div>
-
-      <div class="section-gap">
-        <button class="primary full-width" onclick="startGame()">开始高中生活</button>
-      </div>
-    </div>
-  </section>
-
-  <section id="game" class="hidden">
-    <div class="head">
-      <div><h1>女高模拟器</h1><div class="muted">「<span id="playerNameLabel"></span>」</div></div>
-      <div class="month" id="monthLabel"></div>
-    </div>
-
-    <div class="card">
-      <div class="stats">
-        <div class="stat"><small>魅力</small><b id="charm">0</b></div>
-        <div class="stat"><small>智力</small><b id="intel">0</b></div>
-        <div class="stat"><small>健康</small><b id="health">0</b></div>
-        <div class="stat"><small>家境</small><b id="money">0</b></div>
-      </div>
-      <div class="smalltitle">特质 / 兴趣</div>
-      <div class="buffs" id="buffs"></div>
-    </div>
-
-    <div class="grid">
-      <div class="card">
-        <h2 id="sectionTitle">本月事件</h2>
-        <div class="scene">
-          <div class="tag" id="tag"></div>
-          <h3 id="title"></h3>
-          <p id="text"></p>
-        </div>
-        <div class="choices" id="choices"></div>
-      </div>
-
-      <div>
-        <div class="card">
-          <h2>高中生活记录</h2>
-          <div class="log" id="log"></div>
-          <div class="smalltitle">认识的人</div>
-          <div id="npcList" class="npc-grid npc-list"></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="result" class="hidden">
-    <div class="card">
-      <h1>女高模拟器</h1>
-      <h2 class="result-title">高一结束</h2>
-      <div id="resultText" class="result-text"></div>
-      <button class="primary full-width result-restart" onclick="location.reload()">重新开始 · 再Roll一次</button>
-    </div>
-  </section>
-
-  <noscript>这个游戏需要启用 JavaScript 才能运行。</noscript>
+ <header class="masthead"><span>附中生活手记</span><span>0.5.0 · 三年基础版</span></header>
+ <section id="setup">
+  <div class="intro"><div class="eyebrow">从九月入学，到六月告别</div><h1>女高模拟器</h1><p>她不必样样出色。让擅长的事、遇见的人，和那些不太体面的瞬间，慢慢成为她。</p></div>
+  <div class="card setup-card">
+   <div class="section-heading"><h2>01 / 她是谁</h2><button id="resumeSetup" onclick="loadLocalGame()" disabled>继续上次的生活</button></div>
+   <div class="identity-inputs"><label>名字<input id="playerName" type="text" maxlength="12" placeholder="给她起个名字" autocomplete="off"></label><label>生日（月）<input id="birthdayMonth" type="number" min="1" max="12" value="1"></label><label>生日（日）<input id="birthdayDay" type="number" min="1" max="31" value="1"></label></div>
+   <h2 class="section-gap">02 / 最初的模样</h2>
+   <p class="notice">五项共用40点，每项0～20。外貌几乎不变，其他能力可通过练习成长。允许极端偏科，也允许从短板开始。</p>
+   <div class="inputs allocation-inputs">
+    <label>学力<input id="iAcademic" type="number" min="0" max="20" step="1" value="8"><small>理解 · 考试 · 竞赛</small></label>
+    <label>表达<input id="iExpression" type="number" min="0" max="20" step="1" value="8"><small>交流 · 演讲 · 协商</small></label>
+    <label>体能<input id="iFitness" type="number" min="0" max="20" step="1" value="8"><small>运动 · 恢复 · 坚持</small></label>
+    <label>创造<input id="iCreativity" type="number" min="0" max="20" step="1" value="8"><small>写作 · 艺术 · 设计</small></label>
+    <label class="appearance-input">外貌<input id="iAppearance" type="number" min="0" max="20" step="1" value="8"><small>印象 · 出镜 · 选角</small></label>
+   </div>
+   <div class="allocation-footer"><span>剩余 <b id="remain">0</b> / 40</span><div class="button-row"><button onclick="setAllocation([8,8,8,8,8])">均衡</button><button onclick="setAllocation([20,20,0,0,0])">双项极端</button><button onclick="setAllocation([8,6,6,4,16])">外貌型</button><button onclick="randomAllocation()">随机分配</button></div></div>
+   <p id="allocationMessage" class="notice" role="status"></p>
+   <h2 class="section-gap">03 / 家庭背景</h2>
+   <label class="family-select">家境<select id="family" onchange="refreshFamily()"><option value="modest">拮据</option><option value="ordinary" selected>普通</option><option value="comfortable">宽裕</option><option value="wealthy">富裕</option></select></label>
+   <p id="familyHelp" class="notice"></p><p class="notice">背景不占属性点，是资源难度选择，并非等价加点。家庭收入不决定父母性格。必要学习与主线不收费。</p>
+   <h2 class="section-gap">04 / 性格与兴趣 <span class="muted">从10个候选中选择3个</span></h2>
+   <div id="traitPool" class="rollgrid"></div><p class="notice">机制测试期固定提供“癫佬”：它会替换一个正常选项，可能破坏关系，成长需要跨越多个学期。</p>
+   <details class="seed-settings"><summary>随机种子与存档</summary><label>本局种子<input id="seedInput" type="text" maxlength="40"></label><button onclick="rerollSeed()">应用种子并重抽特质</button><button onclick="document.getElementById('saveFile').click()">导入存档</button><p class="notice">相同种子与相同选择会得到相同结果。应用种子会清除已选特质，不改变已分配的属性。</p></details>
+   <button class="primary full-width start-button" onclick="startGame()">翻开第一页 · 开始高中生活</button>
+  </div>
+ </section>
+ <section id="game" class="hidden">
+  <div class="head"><div><h1>女高模拟器</h1><div class="muted">「<span id="playerNameLabel"></span>」的高中手记</div></div><div class="calendar-heading"><div class="month" id="monthLabel"></div><small id="stageLabel"></small></div></div>
+  <div class="timeline" aria-label="高中进度"><div id="timelineFill"></div></div>
+  <div class="toolbar"><div class="button-row"><button onclick="saveLocalGame()">存档</button><button onclick="loadLocalGame()">读档</button><button onclick="exportGame()">导出存档</button><button onclick="document.getElementById('saveFile').click()">导入</button></div><span id="saveStatus" class="notice" role="status">选择后自动保存</span></div>
+  <div class="card character-card"><div class="stats">
+   <div class="stat" title="学力用于理解、考试、竞赛"><small>学力</small><b id="academic">8</b><span id="xpAcademic"></span></div>
+   <div class="stat" title="表达用于演讲、协商、主动交流"><small>表达</small><b id="expression">8</b><span id="xpExpression"></span></div>
+   <div class="stat" title="体能影响运动及每月恢复，不等于当前精力"><small>体能</small><b id="fitness">8</b><span id="xpFitness"></span></div>
+   <div class="stat" title="创造用于绘画、写作、设计和策划"><small>创造</small><b id="creativity">8</b><span id="xpCreativity"></span></div>
+   <div class="stat appearance-stat" title="外貌不增加信任；仪容为当月临时修正"><small>外貌</small><b id="appearance">8</b><span id="appearanceNote">缓慢变化</span></div>
+  </div><div class="resource-row" id="resourceRow"></div><div class="buffs" id="buffs"></div></div>
+  <div class="grid"><div class="card story-card">
+   <div class="story-topline"><span id="sectionTitle">本月手记</span><span id="pageMark"></span></div>
+   <div class="scene"><div class="tag" id="tag"></div><h3 id="title"></h3><p id="text"></p></div>
+   <div id="effectFeedback" class="effect-feedback" aria-live="polite"></div><div class="choices" id="choices"></div>
+  </div><aside><div class="card"><h2>正在留下的东西</h2><div id="ongoing" class="notice"></div><details class="people-details" open><summary>认识的人</summary><div id="npcList" class="npc-grid npc-list"></div></details></div><div class="card"><details><summary>高中生活记录</summary><div class="log" id="log"></div></details></div></aside></div>
+  <details class="debug-panel"><summary>开发测试 · 会标记为调试局</summary><p class="notice">跳时间和改属性仅供验证，调试局不覆盖正常存档。人物与项目内容仍在扩充。</p><div class="button-row"><select id="debugMonth"></select><button onclick="GameDebug.jump(Number(document.getElementById('debugMonth').value))">跳到月份</button><button onclick="GameDebug.prepareChaos()">补齐癫佬前置（不绕过时间门槛）</button></div><pre id="debugInfo"></pre></details>
+ </section>
+ <section id="result" class="hidden"><div class="card"><div class="eyebrow">六月 · 毕业</div><h1 id="graduationName">她的三年</h1><div id="resultText" class="result-text"></div><div class="button-row"><button onclick="exportGame()">导出这段生活</button><button onclick="showFinishedJournal()">回看人物与记录</button><button class="primary" onclick="location.reload()">重新开始</button></div></div></section>
+ <input id="saveFile" class="hidden" type="file" accept=".json,application/json" onchange="importGameFile(this)">
+ <div id="globalMessage" class="notice global-message" role="status"></div>
+ <footer>五种起点，一段不必完美的高中生活。<span>无需联网 · 自动存档受浏览器权限影响，可导出备份</span></footer>
+ <noscript>这个游戏需要启用 JavaScript。</noscript>
 </div>
-
-<!--
-  这是无构建工具的原生 JavaScript 项目。脚本顺序就是依赖顺序：
-  基础数据 -> 状态和界面 -> 事件数据 -> 游戏流程 -> 初始化。
--->
+<script src="./src/data/attributes.js"></script>
 <script src="./src/data/traits.js"></script>
 <script src="./src/data/npcs.js"></script>
 <script src="./src/data/trait-choices.js"></script>
@@ -103,12 +67,16 @@
 <script src="./src/core/check-system.js"></script>
 <script src="./src/core/trait-system.js"></script>
 <script src="./src/core/ui.js"></script>
+<script src="./src/core/event-system.js"></script>
+<script src="./src/core/persistence.js"></script>
 <script src="./src/data/events-year1.js"></script>
 <script src="./src/data/routes.js"></script>
 <script src="./src/data/random-events.js"></script>
 <script src="./src/data/exams.js"></script>
 <script src="./src/data/events-year2.js"></script>
+<script src="./src/data/life-events.js"></script>
 <script src="./src/core/game.js"></script>
+<script src="./src/core/life.js"></script>
 <script src="./src/main.js"></script>
 </body>
 </html>
