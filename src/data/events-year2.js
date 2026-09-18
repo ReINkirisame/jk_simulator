@@ -4,8 +4,10 @@ SECOND_FIXED[3]=[
   ["最终选择文科","你把最终志愿填成文科。十月的意向也给了你一些参考。",()=>{S.division="文科";if(S.route!=="竞赛生"&&S.route!=="美术生")S.route="文科生";log("正式分科：文科。");return (S.route==="竞赛生"||S.route==="美术生")?`行政上的正式分科完成了，但你已经确定走${S.route}方向，后续路线不会被文科班覆盖。`:"从今天开始，你正式进入文科班。";}],
   ["最终选择理科","你把最终志愿填成理科。十月的意向也给了你一些参考。",()=>{S.division="理科";if(S.route!=="竞赛生"&&S.route!=="美术生")S.route="理科生";log("正式分科：理科。");return (S.route==="竞赛生"||S.route==="美术生")?`行政上的正式分科完成了，但你已经确定走${S.route}方向，后续路线不会被理科班覆盖。`:"从今天开始，你正式进入理科班。";}]
  ]},
- {title:"开学考试",text:"分科之后的第一次考试很快到来。新的课程、新的同学，还有几道明显属于自己方向的题。",choices:[
-  ["开始考试","你翻开试卷，从第一题开始。",()=>{startExam("高一下开学考试","opening");return "HANDLED";}]
+ {id:"y1_mar_opening_exam",title:"开学考试",text:"分科之后的第一次考试很快到来。新的课程、新的同学，还有几道明显属于自己方向的题。",choices:[
+  ["稳妥适应新试卷","先确认分科后的题型与节奏。",action=>startExam("高一下开学考试","opening","steady",action.next),{id:"steady",tags:["稳妥"]}],
+  ["挑战新方向的难题","接受波动，看看自己在新班级里的上限。",action=>startExam("高一下开学考试","opening","risk",action.next),{id:"risk",tags:["冒险","好胜"]}],
+  ["先保住状态","不给开学第一场考试过多意义。",action=>startExam("高一下开学考试","opening","preserve",action.next),{id:"preserve",tags:["取舍"]}]
  ]}
 ];
 SECOND_FIXED[4]=[
@@ -47,8 +49,9 @@ SECOND_FIXED[7]=[
   ["认真体验","你把一天的流程、工作内容和自己想象中的差别都记下来。",()=> "离开的时候，你对“工作”这个词第一次有了比较具体的感觉。"],
   ["先观察别人怎么做","你没有急着表现自己，而是把注意力放在工作本身。",()=> "你发现很多真正麻烦的事情，课本里根本不会提前告诉你。"]
  ]},
- {title:"期末考试",text:"高一下最后一场期末考试开始。走出考场时，你已经明显感觉自己和刚开学时不一样了。",choices:[
-  ["认真完成每一道题","你按自己的节奏把试卷做完。",()=>{startExam("高一下期末","term2");return "HANDLED";}],
-  ["稳住时间分配","你刻意给最后的大题留出时间。",()=>{startExam("高一下期末","term2");return "HANDLED";}]
+ {id:"y1_jul_final",title:"期末考试",text:"高一下最后一场期末考试开始。你只需要决定整场策略，考场中再处理一次真正影响发挥的时刻。",choices:[
+  ["稳妥拿分","按稳定节奏完成整张试卷。",action=>startExam("高一下期末","term2","steady",action.next),{id:"steady",tags:["稳妥"]}],
+  ["挑战难题","接受更大的波动，争取更高上限。",action=>startExam("高一下期末","term2","risk",action.next),{id:"risk",tags:["冒险","好胜"]}],
+  ["保住状态","不让期末考试抹掉这一学期的其他生活。",action=>startExam("高一下期末","term2","preserve",action.next),{id:"preserve",tags:["取舍"]}]
  ]}
 ];

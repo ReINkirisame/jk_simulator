@@ -1,5 +1,15 @@
 "use strict";
 
+function relationLabel(value){
+ const relation=Number(value);
+ if(relation<=-2)return "明显警惕";
+ if(relation<=0)return "有些尴尬";
+ if(relation<3)return "刚认识";
+ if(relation<5)return "熟悉起来了";
+ if(relation<8)return "关系不错";
+ return "非常亲近";
+}
+
 function update(){
  $("charm").textContent=S.stats.charm;$("intel").textContent=S.stats.intel;
  $("health").textContent=S.stats.health;$("money").textContent=S.stats.money;
@@ -14,8 +24,8 @@ function update(){
    return `<span class="buff${cls}"${title}>${esc(item.label)}</span>`;
  }).join("");
  $("npcList").innerHTML=S.npcs.length?S.npcs.map(n=>{
-   const d=NPCS[n],r=S.npcRelation[n]||1;
-   return `<div class="npc"><b>${esc(n)}</b><span>${esc(d.tag)}<br>${esc(d.desc)}<br>关系：${r>=5?"关系不错":r>=3?"熟悉起来了":"刚认识"}</span></div>`;
+    const d=NPCS[n],r=getRelation(n);
+    return `<div class="npc"><b>${esc(n)}</b><span>${esc(d.tag)}<br>${esc(d.desc)}<br>关系：${esc(relationLabel(r))}</span></div>`;
  }).join(""):"<div class='notice'>暂时还没有特别认识的人。</div>";
 }
 
@@ -67,7 +77,11 @@ function showChoices(tag,title,text,choices,next,context={}){
      box.innerHTML="";
      let result="";
      try{
-       if(c&&typeof c[2]==="function")result=c[2]();
+       if(c&&typeof c[2]==="function")result=c[2]({
+         next:()=>safeNext(next),
+         context,
+         choice:c
+       });
      }catch(e){
        console.error("事件选项执行失败：",e);
        result="这一段出现了小故障，但你的选择已经生效。";
@@ -87,6 +101,20 @@ function showChoices(tag,title,text,choices,next,context={}){
    };
    box.appendChild(b);
  });
+ update();
+}
+
+// 用于成绩单、阶段小结等“阅读后继续”的页面，避免把“收好/继续”拆成两次点击。
+function showContinueScreen(tag,title,text,buttonText,next){
+ const box=$("choices");
+ $("tag").textContent=tag||"";
+ $("title").textContent=title||"";
+ $("text").textContent=text||"";
+ box.innerHTML="";
+ const button=document.createElement("button");
+ button.className="primary";button.type="button";button.textContent=buttonText||"继续";
+ button.onclick=()=>{if(button.disabled)return;button.disabled=true;box.innerHTML="";safeNext(next)};
+ box.appendChild(button);
  update();
 }
 
