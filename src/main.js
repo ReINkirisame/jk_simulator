@@ -1,6 +1,6 @@
 "use strict";
 
-const GAME_VERSION="0.2.0";
+const GAME_VERSION="0.3.0";
 
 /**
  * 开发期的轻量内容检查。
@@ -15,6 +15,18 @@ function validateGameData(){
  Object.entries(NPCS).forEach(([name,npc])=>{
    if(!npc||!npc.desc||!npc.tag)warnings.push(`NPC「${name}」缺少描述或标签。`);
  });
+
+ const traitChoiceIds=[];
+ TRAIT_CHOICE_SETS.forEach(set=>{
+   if(!traitNames.includes(set.trait))warnings.push(`特质选项组「${set.id}」引用了不存在的特质「${set.trait}」。`);
+   if(!TRAIT_CHOICE_RESOLVERS[set.resolver])warnings.push(`特质选项组「${set.id}」缺少效果处理器。`);
+   [...(set.choices||[]),...(set.evolvedChoices||[])].forEach(choice=>{
+     if(!choice.id||!choice.label)warnings.push(`特质选项组「${set.id}」存在缺少 id 或文字的选项。`);
+     if(choice.id)traitChoiceIds.push(choice.id);
+   });
+ });
+ const repeatedChoiceIds=traitChoiceIds.filter((id,index)=>traitChoiceIds.indexOf(id)!==index);
+ if(repeatedChoiceIds.length)warnings.push("重复特质选项 ID："+[...new Set(repeatedChoiceIds)].join("、"));
 
  const eventGroups=[
    ...Object.values(FIXED),

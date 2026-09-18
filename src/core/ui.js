@@ -4,7 +4,15 @@ function update(){
  $("charm").textContent=S.stats.charm;$("intel").textContent=S.stats.intel;
  $("health").textContent=S.stats.health;$("money").textContent=S.stats.money;
  $("monthLabel").textContent=S.term+(S.month?(" · "+S.month+"月"):"");
- $("buffs").innerHTML=[...S.traits.map(i=>S.pool[i][0]),...S.interests].map(x=>`<span class="buff">${esc(x)}</span>`).join("");
+ const traitBadges=typeof getVisibleTraitBadges==="function"
+   ?getVisibleTraitBadges()
+   :S.traits.map(i=>({label:S.pool[i][0],className:"",title:""}));
+ const interestBadges=S.interests.map(label=>({label,className:"",title:""}));
+ $("buffs").innerHTML=[...traitBadges,...interestBadges].map(item=>{
+   const cls=item.className?` ${esc(item.className)}`:"";
+   const title=item.title?` title="${esc(item.title)}"`:"";
+   return `<span class="buff${cls}"${title}>${esc(item.label)}</span>`;
+ }).join("");
  $("npcList").innerHTML=S.npcs.length?S.npcs.map(n=>{
    const d=NPCS[n],r=S.npcRelation[n]||1;
    return `<div class="npc"><b>${esc(n)}</b><span>${esc(d.tag)}<br>${esc(d.desc)}<br>关系：${r>=5?"关系不错":r>=3?"熟悉起来了":"刚认识"}</span></div>`;
@@ -12,7 +20,10 @@ function update(){
 }
 
 function renderPool(){
- S.pool=shuffle(TRAITS).slice(0,10);S.traits=[];
+ // 0.3 机制样板期间固定让“癫佬”进入候选池，方便不用反复刷新就能试玩新系统。
+ const featured=TRAITS.find(trait=>trait[0]==="癫佬");
+ const others=TRAITS.filter(trait=>trait!==featured);
+ S.pool=shuffle(featured?[featured,...shuffle(others).slice(0,9)]:shuffle(others).slice(0,10));S.traits=[];
  $("traitPool").innerHTML=S.pool.map((t,i)=>`<div class="trait" data-i="${i}" onclick="toggleTrait(${i})"><b>${esc(t[0])}</b><span>${esc(t[1])}</span></div>`).join("");
 }
 function toggleTrait(i){
@@ -23,17 +34,20 @@ function toggleTrait(i){
 
 /**
  * 显示一段事件和它的选项。
- * 选项格式：[按钮文字, 默认结果文字, 可选的效果函数]
+ * 选项格式：[按钮文字, 默认结果文字, 可选的效果函数, 可选的界面元数据]
  * 效果函数返回字符串时优先显示该字符串；未返回时显示默认结果文字。
+ * context 用来描述当前事件环境，特质系统会据此追加至多一个专属选项。
  */
-function showChoices(tag,title,text,choices,next){
+function showChoices(tag,title,text,choices,next,context={}){
  const box=$("choices");
  $("tag").textContent=tag||"";
  $("title").textContent=title||"";
  $("text").textContent=text||"";
  box.innerHTML="";
 
- const list=Array.isArray(choices)?choices:[];
+ const list=typeof injectTraitChoices==="function"
+   ?injectTraitChoices(choices,context)
+   :(Array.isArray(choices)?choices:[]);
  if(!list.length){
    const n=document.createElement("button");
    n.className="primary";n.type="button";n.textContent="继续";
@@ -45,6 +59,7 @@ function showChoices(tag,title,text,choices,next){
  list.forEach((c)=>{
    const b=document.createElement("button");
    b.type="button";b.textContent=c&&c[0]?c[0]:"继续";
+   if(c&&c[3]&&c[3].className)b.classList.add(c[3].className);
    b.onclick=()=>{
      if(locked)return;
      locked=true;

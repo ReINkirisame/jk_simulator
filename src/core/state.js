@@ -7,13 +7,17 @@ let S={
  traits:[],pool:[],stats:{charm:10,intel:10,health:10,money:10},
  interests:[],club:null,route:null,division:null,
  birthdayMonth:1,birthdayDay:1,npcs:[],npcRelation:{},
- usedRandom:[],usedRoute:{},history:[],flags:{},exam:{}
+ usedRandom:[],usedRoute:{},history:[],flags:{},exam:{},
+ traitProgress:{},hiddenTraits:[],
+ traitChoiceState:{misses:0,lastEventId:null,recentChoiceIds:[]}
 };
 
 function $(id){return document.getElementById(id)}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 function shuffle(a){return [...a].sort(()=>Math.random()-0.5)}
-function hasTrait(t){return S.traits.some(i=>S.pool[i]&&S.pool[i][0]===t)}
+function hasTrait(t){
+ return S.traits.some(i=>S.pool[i]&&S.pool[i][0]===t)||(Array.isArray(S.hiddenTraits)&&S.hiddenTraits.includes(t));
+}
 function hasInterest(t){return S.interests.includes(t)}
 function hasTag(t){return hasTrait(t)||hasInterest(t)}
 function log(t){const b=$("log");b.innerHTML+=`<p>· ${esc(t)}</p>`;b.scrollTop=b.scrollHeight}
