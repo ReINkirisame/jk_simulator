@@ -38,10 +38,11 @@ function runtime({entry=path.join(root,"index.html")}={}){
  const run=code=>vm.runInContext(code,context);
  for(const [filename,source] of scripts)vm.runInContext(source,context,{filename});
  const json=code=>JSON.parse(JSON.stringify(run(code)));
- function launch({seed="regression",stats=[8,8,8,8,8],family="ordinary",chaos=false,name="测试角色"}={}){
+ function launch({seed="regression",stats=[8,8,8,8,8],family="ordinary",chaos=false,traits=null,name="测试角色"}={}){
   elements.playerName.value=name;elements.family.value=family;elements.birthdayMonth.value="4";elements.birthdayDay.value="15";
   run("setGameSeed("+JSON.stringify(seed)+");renderPool();setAllocation("+JSON.stringify(stats)+");");
-  run(chaos?'S.traits=[S.pool.findIndex(t=>t[0]==="癫佬"),...S.pool.map((_,i)=>i).filter(i=>S.pool[i][0]!=="癫佬").slice(0,2)];':'S.traits=S.pool.map((t,i)=>({t,i})).filter(x=>x.t[0]!=="癫佬").slice(0,3).map(x=>x.i);');
+  const requested=Array.isArray(traits)?traits:chaos?["癫佬","电波"]:[];
+  run(`(()=>{const requested=${JSON.stringify(requested)};const names=[...requested,...S.pool.map(item=>item[0]),...TRAITS.map(item=>item[0])].filter((name,index,list)=>list.indexOf(name)===index).slice(0,10);S.pool=names.map(name=>TRAITS.find(item=>item[0]===name));S.traits=[0,1,2];})()`);
   run("startGame();");
  }
  function buttons(){return elements.choices.children.filter(b=>b.tagName==="BUTTON"&&!b.disabled&&typeof b.onclick==="function");}

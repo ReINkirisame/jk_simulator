@@ -1,4 +1,4 @@
-# 当前代码结构（0.5.1）
+# 当前代码结构（0.6.0）
 
 ## 加载与状态
 
@@ -13,7 +13,8 @@
 | growth | 能力经验、各学期已经增长的点数 |
 | family / resources | 家境；零花钱、精力、压力 |
 | npcs / npcRelation / npcTrust | 已认识人物、关系、信任 |
-| traitMilestones | 有效成长月份、遇到的人物、场景种类 |
+| traitJourneys / traitProgress | 每项成长特质的经验、月份、人物、场景、成功对象与行为风格；兼容进度镜像 |
+| hiddenTraits / hiddenTraitSources / fusionHistory | 隐藏特质、来源锁定与合成历史 |
 | flags / choiceHistory / memories | 条件、选择记录、重要记忆 |
 | project / examArchive | 共同项目、历次考试 |
 | habits | 三类习惯、持续月数、变更记录、高三锁定与社交焦点 |
@@ -21,13 +22,13 @@
 | rng | 种子与当前随机状态 |
 | journal / debug | 日志与调试局标记 |
 
-npcFamiliarity 是预留的熟悉度计数，本版未将它做成独立判定轴；癫佬“已经熟悉”修正读取关系值。不要把一个仅被记录的字段描述成完整机制。
+npcFamiliarity 是预留的熟悉度计数，本版未将它做成独立判定轴；特质“已经熟悉”修正读取关系值。旧 `traitMilestones` 字段仍留在新状态中供旧结构辨认，但0.6.0合成只读 `traitJourneys`。
 
 ## 三年主流程
 
-life.js 根据 attributes.js 中的 CALENDAR 推进月份：月间收入与恢复 → 可触发的进化场景 → 当月内容 → 生日及人物互动 → 月末或学年小结。
+life.js 根据 attributes.js 中的 CALENDAR 推进月份：月间收入与恢复 → 可触发的合成事件 → 当月内容 → 生日及人物互动 → 月末或学年小结。
 
-- 高一：保留旧固定事件、路线和随机事件，补充真实效果与外貌场景。
+- 高一：保留旧固定事件、路线和随机事件，补充真实效果、外貌场景与八个独立人物初遇。初遇选完即结束，不立即串联第二场人物对话。
 - 高二：选择一项项目和三类生活习惯，经历分工、试做、预算、展示与交付；1月、3月可各复盘一次习惯。
 - 高三：9月选择优先方向并锁定两类既有习惯，寒假只允许调整剩余一类；经历模拟考试、旧事回收、告别与毕业。
 - 假期：一次主要安排与一次人物互动。月份不被跳过，生日和成长仍正常计数。
@@ -42,7 +43,7 @@ school-life.js 只保存定义：三个习惯槽、可选习惯、论坛背景�
 
 论坛每月从可用模板确定性选两条，不调用主随机源，因此不会因为展示背景帖改变考试或事件骰点。传闻根据存档真实状态按优先级选择，同一存档中同一条只出现一次，两条传闻至少间隔2个月。传闻回应记录在 choiceHistory；后续最多由两个不同NPC提起，防止每次见面重复同一句话。
 
-论坛和传闻都是单局状态，0.5.1没有服务器、全玩家统计或跨周目图鉴。不要把静态模板描述成真实玩家帖子。
+论坛和传闻都是单局状态，0.6.0没有服务器、全玩家统计或跨周目图鉴。不要把静态模板描述成真实玩家帖子。
 
 share-card.js 从 graduationPortrait 读取最终状态，并在浏览器 Canvas 中生成PNG。图中不存在的内容不得为了排版“补全”；新增毕业字段时应同时更新页面画像、卡片数据测试和绘制逻辑。
 
@@ -106,7 +107,9 @@ run(action, context) 可接管复杂流程。返回 HANDLED 时，子流程负�
 
 固定旧事件的差异效果集中在 LEGACY_FIXED_EFFECTS；路线效果由 routeChoiceEffects 提供。迁移时去掉对应兼容效果，避免结算两次。
 
-癫佬只替换明确标为 replaceable、角色为 social/bold 且未 protected 的选项。没有标记即不替换。原始数组保持不变，替换后的选项不会执行原选项的效果。
+成长特质只替换明确标为 replaceable、角色为 social/bold 且未 protected 的选项。没有标记即不替换。原始数组保持不变，替换后的选项不会执行原选项的效果。
+
+trait-choices.js 定义普通和隐藏选项组，以及 `FUSION_RECIPES`。trait-system.js 为每项常规特质隔离成长状态，记录共同成功人物、风格、高压力表演和失败，并由 `fusionEligibility` 检查配方。接受合成后把来源的 `fusedInto` 指向隐藏结果，避免普通来源和隐藏结果同时竞争注入位置。
 
 ## 判定与存档
 
@@ -121,9 +124,9 @@ run(action, context) 可接管复杂流程。返回 HANDLED 时，子流程负�
 ## 验证入口
 
 - main.js 的 validateGameData：静态数据检查。
-- npm test：29组规则回归、6条三年流程和中途/毕业存档重放。
+- npm test：34组规则回归、8条三年流程和中途/毕业存档重放。
 - tools/browser-check.js：可选真实浏览器操作、响应布局和下载检查。
 - tools/build-standalone.js：将 CSS/JS 嵌入可独立运行的 HTML。
-- GameDebug.getState / validate / evolution：读取调试信息；check / jump / prepareChaos / setStat 会标记调试局。
+- GameDebug.getState / validate / traits / fusions：读取调试信息；check / jump / prepareFusion / setStat 会标记调试局。
 
 新增分支应验证实际后果和后续读取，不能仅验证字段写入或文字存在。

@@ -53,15 +53,18 @@ function runFixedMonth(i,done){
  const rawChoices=typeof e.getChoices==="function"?e.getChoices():e.choices;
  const choices=(Array.isArray(rawChoices)?rawChoices:[]).map((choice,index)=>{
    const meta=choice&&choice[3]&&typeof choice[3]==="object"?choice[3]:{};
+   const legacyEffects=LEGACY_FIXED_EFFECTS[e.title]?.[index]||[];
+   const examKind=typeof examKindForEvent==="function"?examKindForEvent(eventId,e.title):null;
+   const enhancedMeta={...meta,preview:meta.preview||(examKind&&["steady","risk","preserve"].includes(meta.id)?()=>examForecastText(examKind,meta.id):choiceEffectPreview(legacyEffects))};
    const effect=choice&&choice[2];
    return [choice[0],choice[1],action=>{
      rememberChoice(eventId,meta.id||`choice-${index+1}`,choice[0],meta.tags||[]);
-     applyEffects(LEGACY_FIXED_EFFECTS[e.title]?.[index]||[]);
+     applyEffects(legacyEffects);
      const result=typeof effect==="function"?effect(action):undefined;
      const impact=typeof meta.impact==="function"?meta.impact():meta.impact||"";
      if(impact)rememberImpact(eventId,impact);
      return result;
-   },choice[3]];
+   },enhancedMeta];
  });
  const seenKey=`fixedSeen:${S.term}:${S.month}:${eventId}`;
  if(!S.flags[seenKey]){S.flags[seenKey]=true;S.history.push("固定："+e.title);}
@@ -181,12 +184,22 @@ function examTraitEffects(){
  return {check,score,label:labels.length?labels.join("、"):"无"};
 }
 
+function examKindForEvent(id,title=""){
+ const byId={
+  "y1_oct_first_exam":"monthly","y1_nov_midterm":"midterm","y1_dec_final":"term1","y1_mar_opening_exam":"opening","y1_jul_final":"term2",
+  "y2-term1":"y2-term1","y2-term2":"y2-term2","y3-mock1":"y3-monthly1","y3-mock2":"y3-monthly2","y3-final":"graduation"
+ };
+ if(byId[id])return byId[id];
+ if(title.includes("高二上"))return "y2-term1";if(title.includes("高二下"))return "y2-term2";
+ return null;
+}
+
 function calculateExam(name,kind,strategyId,momentId,dice=null){
  const strategy=EXAM_STRATEGIES[strategyId]||EXAM_STRATEGIES.steady;
  const trait=examTraitEffects();
  const habit=habitExamEffects();
- const healthCheck=(S.stats.fitness>=16?1:S.stats.fitness<=3?-1:0)+(S.resources.energy<25?-1:0)+(S.resources.stress>=70?-1:0);
- const healthScore=(S.stats.fitness>=16?6:S.stats.fitness<=3?-6:0)+(S.resources.energy>=70?4:S.resources.energy<25?-8:0)+(S.resources.stress>=70?-8:0);
+ const healthCheck=(S.stats.fitness>=16?1:S.stats.fitness<=3?-1:0)+(S.resources.energy<30?-1:0)+(S.resources.energy<10?-1:0)+(S.resources.stress>=70?-1:0)+(S.resources.stress>=90?-1:0);
+ const healthScore=(S.stats.fitness>=16?6:S.stats.fitness<=3?-6:0)+(S.resources.energy>=75?6:S.resources.energy<10?-16:S.resources.energy<30?-10:S.resources.energy<50?-4:0)+(S.resources.stress<40?2:S.resources.stress>=90?-16:S.resources.stress>=70?-8:0);
  const preparation=(Number(S.tendencies["稳妥"])||0)>=2?1:0;
  const momentCheck=momentId==="pace"?1:0;
  const check=resolveCheck({
@@ -203,23 +216,41 @@ function calculateExam(name,kind,strategyId,momentId,dice=null){
    dice,
    label:name
  });
- const base=(EXAM_BASE_SCORES[kind]??EXAM_BASE_SCORES.monthly)+(S.year-1)*16;
- const academic=Math.round(S.stats.academic*6.5)+(Number(S.flags.examPreparation)||0)*2;
+ const base=EXAM_BASE_SCORES[kind]??EXAM_BASE_SCORES.monthly;
+ const academicValue=S.stats.academic;
+ const academicScore=Math.round(academicValue*13);
+ const preparationScore=(Number(S.flags.examPreparation)||0)*3;
  const performance={failure:-18,setback:-6,success:5,great:14}[check.grade];
  let strategyScore=strategy.score;
  if(strategyId==="risk")strategyScore={failure:-18,setback:-7,success:6,great:16}[check.grade];
  const momentScore=momentId==="pace"?4:momentId==="instinct"?(check.grade==="great"?7:check.grade==="failure"?-4:1):0;
- const total=Math.max(300,Math.min(680,Math.round(base+academic+healthScore+trait.score+habit.score+strategyScore+momentScore+performance)));
+ const total=Math.max(180,Math.min(735,Math.round(base+academicScore+preparationScore+healthScore+trait.score+habit.score+strategyScore+momentScore+performance)));
  if(strategyId==="preserve"){changeResource("energy",6,"考试中保住了状态");changeResource("stress",-4);}
  else {changeResource("energy",strategyId==="risk"?-10:-5);changeResource("stress",strategyId==="risk"?6:2);}
  S.flags.examPreparation=0;
- return {name,kind,strategyId,momentId,score:total,check,parts:{base,academic,healthScore,traitScore:trait.score,habitScore:habit.score,strategyScore,momentScore,performance},traitLabel:trait.label,habitLabel:habit.label};
+ return {name,kind,strategyId,momentId,score:total,check,parts:{base,academicValue,academicScore,preparationScore,healthScore,traitScore:trait.score,habitScore:habit.score,strategyScore,momentScore,performance},traitLabel:trait.label,habitLabel:habit.label};
+}
+
+function examForecast(kind,strategyId="steady",major=kind!=="monthly"&&!String(kind).includes("monthly")){
+ const strategy=EXAM_STRATEGIES[strategyId]||EXAM_STRATEGIES.steady,trait=examTraitEffects(),habit=habitExamEffects();
+ const fitness=S.stats.fitness>=16?6:S.stats.fitness<=3?-6:0;
+ const energy=S.resources.energy>=75?6:S.resources.energy<10?-16:S.resources.energy<30?-10:S.resources.energy<50?-4:0;
+ const stress=S.resources.stress<40?2:S.resources.stress>=90?-16:S.resources.stress>=70?-8:0;
+ const core=(EXAM_BASE_SCORES[kind]??EXAM_BASE_SCORES.monthly)+S.stats.academic*13+(Number(S.flags.examPreparation)||0)*3+fitness+energy+stress+trait.score+habit.score;
+ const gradeRange=strategyId==="risk"?[-36,30]:strategyId==="preserve"?[-22,10]:[-13,19];
+ const moment=major?7:0;
+ return [Math.max(180,Math.round(core+gradeRange[0])),Math.min(735,Math.round(core+gradeRange[1]+moment))];
+}
+function examForecastText(kind,strategyId){
+ const [low,high]=examForecast(kind,strategyId),cost={steady:"精力-5 · 压力+2",risk:"精力-10 · 压力+6",preserve:"精力+6 · 压力-4"}[strategyId]||"";
+ return `当前预计 ${low}～${high} / 750${cost?` · ${cost}`:""}`;
 }
 
 function saveExamResult(result){
  const {kind,score}=result;
  S.exam[kind]=score;S.examDetails[kind]=result;
  S.examArchive.push({...result,year:S.year,month:S.month});
+ gainExperience("academic",1,"考试后的复盘");
  if(kind==="monthly"&&S.year===1)S.exam.firstMonthly=score;
  if(kind==="midterm")S.exam.midterm=score;
  if(kind==="term1")S.exam.firstFinal=score;
@@ -238,7 +269,7 @@ function examResultText(result){
      :result.check.grade==="success"
        ?"你的发挥基本兑现了此前的准备。"
        :"这次不只准备充分，考场上的节奏也恰好站在了你这边。";
- return `${result.name}结束。\n\n本次成绩：${result.score} / 750\n策略：${strategy.label}\n长期习惯：${result.habitLabel}\n\n${performanceText}\n\n${formatCheck(result.check)}\n\n成绩构成：学业基础 ${p.base+p.academic}，状态 ${formatSigned(p.healthScore)}，特质 ${formatSigned(p.traitScore)}，习惯 ${formatSigned(p.habitScore)}，策略与临场 ${formatSigned(p.strategyScore+p.momentScore+p.performance)}。`;
+ return `${result.name}结束。\n\n本次成绩：${result.score} / 750\n策略：${strategy.label}\n长期习惯：${result.habitLabel}\n\n${performanceText}\n\n${formatCheck(result.check)}\n\n成绩构成：试卷基准 ${p.base}，学力${p.academicValue}贡献 +${p.academicScore}，考前准备 ${formatSigned(p.preparationScore)}，身心状态 ${formatSigned(p.healthScore)}，特质 ${formatSigned(p.traitScore)}，习惯 ${formatSigned(p.habitScore)}，策略与临场 ${formatSigned(p.strategyScore+p.momentScore+p.performance)}。`;
 }
 
 function finishExam(name,kind,strategyId,momentId,resume,dice=null){
@@ -251,8 +282,8 @@ function startExam(name,kind,strategyId="steady",resume=finishMonth){
  const major=kind!=="monthly"&&!kind.includes("monthly");
  if(!major){finishExam(name,kind,strategyId,null,resume);return "HANDLED";}
  showChoices("考试 · 考场抉择",name,`考试进行到后半段，时间开始变得紧张。还有几道题没做完，前面也有几处让你拿不准的答案。抬头看过时钟以后，你决定……`,[
-   ["重新分配剩余时间","你先保证整张卷子都能留下有效答案。",()=>{rememberChoice(`exam:${kind}:moment`,"pace","重新分配剩余时间",["稳妥"]);finishExam(name,kind,strategyId,"pace",resume);return "HANDLED";}],
-   ["相信第一判断继续做","你不反复修改已经完成的部分，把注意力留给眼前。",()=>{rememberChoice(`exam:${kind}:moment`,"instinct","相信第一判断继续做",["果断"]);finishExam(name,kind,strategyId,"instinct",resume);return "HANDLED";}]
+   ["重新分配剩余时间","你先保证整张卷子都能留下有效答案。",()=>{rememberChoice(`exam:${kind}:moment`,"pace","重新分配剩余时间",["稳妥"]);finishExam(name,kind,strategyId,"pace",resume);return "HANDLED";},{id:"pace",preview:"判定+1 · 成绩稳定+4"}],
+   ["相信第一判断继续做","你不反复修改已经完成的部分，把注意力留给眼前。",()=>{rememberChoice(`exam:${kind}:moment`,"instinct","相信第一判断继续做",["果断"]);finishExam(name,kind,strategyId,"instinct",resume);return "HANDLED";},{id:"instinct",preview:"大成功+7 · 大失败-4"}]
  ],()=>{});
  return "HANDLED";
 }
@@ -478,7 +509,7 @@ function clubWeek(next){
   gainExperience(index===0?stat:"expression",2,"社团活动周");changeResource("energy",index===0?-7:-3);
   if(index===0)S.flags.clubCommitment=(S.flags.clubCommitment||0)+1;else changeResource("stress",-3);
   return typeof c[2]==="function"?c[2]():c[1];
- }]);
+ },{id:`club-${index}`,preview:index===0?`精力-7 · ${ATTRIBUTES[stat].label}经验+2`:`精力-3 · 压力-3 · 表达经验+2`}]);
  showChoices("固定事件 · 5月","社团活动周 · "+club,scene[0],choices,typeof next==="function"?next:()=>{});
  return "HANDLED";
 }
@@ -505,7 +536,7 @@ function runRoute(done){
    rememberChoice("route:"+r+":"+idx,"choice-"+index,c[0],index===0?["投入"]:["调节"]);
    applyEffects(routeChoiceEffects(r,idx,index));
    return typeof c[2]==="function"?c[2]():c[1];
-  }]);
+  },{id:"choice-"+index,preview:choiceEffectPreview(routeChoiceEffects(r,idx,index))}]);
   showChoices("路线固定事件 · "+S.month+"月",pick.title,pick.text,choices,done);
 }
 
@@ -517,31 +548,36 @@ function runRandom(slot,done){
     if(!unused.length){npcInteraction(nextSocialNpc(),done);return;}
 
     const name=randomItem(unused);
-    const intro={
-      "大小姐":"她抱着手站在你旁边，嘴上还是一副“只是顺便聊聊”的样子。",
-      "班长":"她把手里的资料整理好，转过来认真听你说。",
-      "主人公":"她完全没有陌生人的拘谨，像是已经认识你一阵子似的。",
-      "转校生":"她没有看你太久，但也没有像刚才那样马上离开。",
-      "中二病":"她双马尾随着动作轻轻晃了一下，表情依旧认真得像是在讨论什么大事。",
-      "学姐":"她站在校门边，和你聊起以前学校里那些现在想起来有点好笑的事情。",
-      "同人女":"她把画本抱在怀里，终于没有刚见面时那么戒备。",
-      "体育生":"她刚结束训练，整个人还是一副随时还能再跑两圈的样子。"
-    };
+    const intro=NPC_INTROS[name];
+    const choices=intro.choices.map((choice,index)=>[
+      choice.label,
+      choice.result,
+      ()=>{
+        ensureNpc(name,Math.max(1,choice.relation||1));
+        if((choice.relation||1)>1)changeRelation(name,(choice.relation||1)-getRelation(name),"初次相处");
+        if(choice.trust)changeTrust(name,choice.trust,"初次相处留下了信任");
+        if(choice.xp)gainExperience(choice.xp,1,"初次相处");
+        if(choice.energy)changeResource("energy",choice.energy,"初次相处");
+        if(choice.stress)changeResource("stress",choice.stress,"初次相处");
+        S.flags[`firstApproach:${name}`]=choice.id;
+        rememberChoice(`meet:${name}`,choice.id,choice.label,choice.tags||[],`第一次真正认识了${name}`);
+        return choice.result;
+      },
+      {id:choice.id,role:index===0?"bold":"social",replaceable:true,preview:[choice.energy?`精力${formatSigned(choice.energy)}`:"",choice.stress?`压力${formatSigned(choice.stress)}`:"",`关系约 +${choice.relation||1}${choice.trust?` · 信任+${choice.trust}`:""}`].filter(Boolean).join(" · ")}
+    ]);
 
     showChoices(
       "随机事件 · 认识同学",
-      "第一次去卢浮宫时，没有什么特别的感觉",
-      `放学以后，你在教学楼外碰见了${name}。\n\n${NPCS[name].desc}\n\n${intro[name]||""}\n\n广播站的声音从教学楼里传出来，周围还有同学抱着作业经过。`,
-      [
-        ["主动聊两句","你从课程、食堂或社团开始聊。",()=>{S.flags[`firstApproach:${name}`]="主动";addTendency("主动");rememberChoice(`meet:${name}`,"active","主动聊两句",["社交"]);}],
-        ["先从共同话题说起","你从学校里刚发生的事情聊起。",()=>{S.flags[`firstApproach:${name}`]="共同话题";addTendency("观察");rememberChoice(`meet:${name}`,"common","先从共同话题说起",["稳妥"]);}]
-      ],
+      intro.title,
+      `${NPCS[name].desc}\n\n${intro.text}`,
+      choices,
       ()=>{
-        ensureNpc(name,S.flags["firstApproach:"+name]==="共同话题"?2:1);
+        ensureNpc(name,1);
         if(S.stats.appearance>=16){S.flags["noticed:"+name]=true;log(name+"先记住了你的样子，但这不等于信任。");}
         update();
-        npcInteraction(name,done);
-      }
+        done();
+      },
+      {eventId:`meet:${name}`,allowTraitChoices:true,tags:["npc","social"],npc:name,sceneCategory:sceneCategory()}
     );
     return;
   }

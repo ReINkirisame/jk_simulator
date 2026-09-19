@@ -2,11 +2,11 @@
 const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path");
 const {runtime}=require("./test-runtime");
 const root=path.resolve(__dirname,"..");
-const standalone=path.resolve(process.argv[2]||path.join(root,"..","release","女高模拟器-v0.5.1.html"));
+const standalone=path.resolve(process.argv[2]||path.join(root,"..","release","女高模拟器-v0.6.0.html"));
 
 function finish(entry){
  const r=runtime({entry});
- r.launch({name:"单文件校验",stats:[8,8,8,8,8],family:"ordinary",seed:"standalone-051",chaos:true});
+ r.launch({name:"单文件校验",stats:[8,8,8,8,8],family:"ordinary",seed:"standalone-060",chaos:true});
  const checkpoints=new Set([40,120,220]);
  let clicks=0;
  for(;clicks<380&&r.state().phase!=="graduated";clicks+=1){

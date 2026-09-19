@@ -47,47 +47,59 @@ test("expression and creativity checks do not borrow appearance",()=>{
  const r=runtime();r.launch();
  assert.deepEqual(r.json('S.stats.expression=0;S.stats.creativity=0;S.stats.appearance=20;[resolveCheck({stat:"expression",dice:[3,3]}).modifierTotal,resolveCheck({stat:"creativity",dice:[3,3]}).modifierTotal]'),[-2,-2]);
 });
-function chaosRuntime(){
- const r=runtime();r.launch({chaos:true});
- r.run('S.traitProgress={};S.traitMilestones={months:[],npcs:[],scenes:[]};S.traitChoiceState={misses:0,lastEventId:null,recentChoiceIds:[]};');
+function traitRuntime(traits=["癫佬","认真","运动少女"]){
+ const r=runtime();r.launch({traits});
+ r.run('S.traitProgress={};S.traitJourneys={};S.traitChoiceState={misses:0,lastEventId:null,recentChoiceIds:[]};');
  return r;
 }
 const base='[["正常主动方案","",()=>{S.flags.normalEffect=true;},{id:"normal",role:"social",replaceable:true}],["安全方案","",()=>{}, {id:"safe",protected:true}]]';
-test("chaos replaces one explicit slot without inheriting its benefit or mutating the source",()=>{
- const r=chaosRuntime();
+test("progressive trait replaces one explicit slot without inheriting its benefit or mutating the source",()=>{
+ const r=traitRuntime();
  const v=r.json('(()=>{const base='+base+';const list=injectTraitChoices(base,{eventId:"replace-test",allowTraitChoices:true,tags:["npc","social"],npc:"班长",sceneCategory:"classroom",forceTraitChoice:true,checkDice:[1,1]});const original=base[0][0];list[0][2]();return {length:list.length,original,unaffected:list[1][0],replaced:list[0][3].replacedId,normalEffect:!!S.flags.normalEffect,relation:getRelation("班长"),pending:S.flags["chaosAftermath:班长"].pending};})()');
  assert.equal(v.length,2);assert.equal(v.original,"正常主动方案");assert.equal(v.unaffected,"安全方案");assert.equal(v.replaced,"normal");assert.equal(v.normalEffect,false);assert(v.relation<1);assert.equal(v.pending,true);
 });
 test("single, unmarked and protected choices cannot be replaced",()=>{
- const r=chaosRuntime();
+ const r=traitRuntime();
  const v=r.json('(()=>{const c={eventId:"protected",allowTraitChoices:true,tags:["npc","social"],npc:"班长",forceTraitChoice:true};const lists=[injectTraitChoices([["继续","",()=>{}, {role:"social",replaceable:true}]],c),injectTraitChoices([["甲","",()=>{}],["乙","",()=>{}]],c),injectTraitChoices([["关键","",()=>{}, {role:"social",replaceable:true,protected:true}],["安全","",()=>{}]],c)];return lists.map(list=>list.some(x=>x[3]?.trait));})()');
  assert.deepEqual(v,[false,false,false]);
 });
-test("four uses in one month yield only one XP and cannot evolve",()=>{
- const r=chaosRuntime();
+test("four uses in one month yield one XP; four months reach level two",()=>{
+ const r=traitRuntime();
  const v=r.json('(()=>{for(let i=0;i<4;i++)advanceTraitProgress(TRAIT_CHOICE_SETS[0],{npc:["班长","同人女","体育生","中二病"][i],sceneCategory:["classroom","club","campus","holiday"][i]});return {xp:getTraitXp("癫佬"),level:getTraitLevel("癫佬"),hidden:S.hiddenTraits};})()');
  assert.deepEqual(v,{xp:1,level:1,hidden:[]});
+ const later=r.json('(()=>{for(const [year,month] of [[1,10],[1,11],[1,12]]){S.year=year;S.month=month;advanceTraitProgress(TRAIT_CHOICE_SETS[0],{npc:"班长",sceneCategory:"classroom"});}return {xp:getTraitXp("癫佬"),level:getTraitLevel("癫佬")};})()');
+ assert.deepEqual(later,{xp:4,level:2});
 });
-test("four distinct months reach level 2; year is part of the growth key",()=>{
- const r=chaosRuntime();
- const v=r.json('(()=>{for(const [year,month] of [[1,9],[1,10],[1,11],[2,9]]){S.year=year;S.month=month;advanceTraitProgress(TRAIT_CHOICE_SETS[0],{npc:"班长",sceneCategory:"classroom"});}return {xp:getTraitXp("癫佬"),level:getTraitLevel("癫佬"),hidden:S.hiddenTraits};})()');
- assert.deepEqual(v,{xp:4,level:2,hidden:[]});
+test("koishi synthesis requires both sources, breadth, shared success and winter of year two",()=>{
+ const r=traitRuntime(["癫佬","电波","认真"]);
+ r.run('for(const name of ["癫佬","电波"]){const j=traitJourney(name);Object.assign(j,{xp:6,months:["1:9","1:10","1:11","1:12","1:1","1:2"],npcs:["班长","同人女","体育生","中二病"],scenes:["classroom","club","holiday"],positiveNpcs:["班长"],styles:{battle:1},uses:6});S.traitProgress[name]=6;}');
+ assert.equal(r.run('S.calendarIndex=15;fusionEligibility("koishi").eligible'),false);
+ assert.equal(r.run('S.calendarIndex=16;S.year=2;S.month=1;S.term="高二寒假";fusionEligibility("koishi").eligible'),true);
+ assert.equal(r.run('tryTraitFusion(()=>{})'),true);assert.equal(r.elements.title.textContent,"没有人记得第一回合");r.click(0);
+ const state=r.state();assert(state.hiddenTraits.includes("古明地恋"));assert.equal(state.flags.koishiAwakenedAt.index,16);assert.equal(state.traitJourneys["癫佬"].fusedInto,"古明地恋");
+ const s=traitRuntime(["癫佬","认真","运动少女"]);
+ s.run('S.calendarIndex=16;for(const name of ["癫佬","电波"]){const j=traitJourney(name);Object.assign(j,{xp:6,npcs:["班长","同人女","体育生","中二病"],scenes:["classroom","club","holiday"],positiveNpcs:["班长"]});}');
+ assert.equal(s.run('fusionEligibility("koishi").eligible'),false,"unselected source must not synthesize");
 });
-test("evolution gates time, experience, people and scene diversity independently",()=>{
- const r=chaosRuntime();
- r.run('S.traitProgress["癫佬"]=12;S.traitMilestones={months:[],npcs:["班长","同人女","体育生","中二病"],scenes:["classroom","club","holiday"]};');
- for(let index=0;index<16;index++)assert.equal(r.run("S.calendarIndex="+index+";tryChaosEvolution(()=>{})"),false);
- assert.equal(r.run('S.calendarIndex=16;S.year=2;S.month=1;S.term="高二寒假";tryChaosEvolution(()=>{})'),true);
- assert.equal(r.state().hiddenTraits.length,0);r.click(0);
- assert(r.state().hiddenTraits.includes("古明地恋"));assert.equal(r.state().flags.koishiAwakenedAt.index,16);
- const s=chaosRuntime();
- s.run('S.calendarIndex=16;S.traitProgress["癫佬"]=12;S.traitMilestones={months:[],npcs:["班长","同人女","体育生","中二病"],scenes:["classroom","club","holiday"]};');
- for(const setup of ['S.traitProgress["癫佬"]=11','S.traitProgress["癫佬"]=12;S.traitMilestones.npcs.pop()','S.traitMilestones.npcs.push("中二病");S.traitMilestones.scenes.pop()'])assert.equal(s.run(setup+";tryChaosEvolution(()=>{})"),false);
+test("bocchi and yukino recipes require their distinctive behavior gates",()=>{
+ const bocchi=traitRuntime(["社恐","吉他手","认真"]);
+ bocchi.run('S.calendarIndex=12;for(const name of ["社恐","吉他手"]){const j=traitJourney(name);Object.assign(j,{xp:5,npcs:["班长","同人女"],scenes:["club","campus"],positiveNpcs:["班长"],styles:{}});S.traitProgress[name]=5;}traitJourney("吉他手").styles.performance=1;traitJourney("吉他手").highStressUses=1;ensureNpc("班长",4);S.npcTrust["班长"]=2;');
+ assert.equal(bocchi.run('fusionEligibility("bocchi").eligible'),true);
+ assert.equal(bocchi.run('traitJourney("吉他手").highStressUses=0;fusionEligibility("bocchi").eligible'),false);
+ const yukino=traitRuntime(["完美主义","冰山","认真"]);
+ yukino.run('S.calendarIndex=12;S.stats.academic=16;for(const name of ["完美主义","冰山"]){const j=traitJourney(name);Object.assign(j,{xp:5,npcs:["班长","同人女"],scenes:["classroom","campus"],positiveNpcs:["班长"],styles:{}});S.traitProgress[name]=5;}traitJourney("完美主义").styles["direct-help"]=1;traitJourney("冰山").failures=1;');
+ assert.equal(yukino.run('fusionEligibility("yukino").eligible'),true);
+ assert.equal(yukino.run('S.stats.academic=15;fusionEligibility("yukino").eligible'),false);
 });
-test("evolved choices still replace normal choices and still allow a negative outcome",()=>{
- const r=chaosRuntime();
- const v=r.json('(()=>{S.hiddenTraits=["古明地恋"];const choices=injectTraitChoices('+base+',{allowTraitChoices:true,eventId:"evolved",tags:["npc","social"],npc:"大小姐",sceneCategory:"campus",forceTraitChoice:true,checkDice:[1,1]});const before=getRelation("大小姐");choices[0][2]();return {length:choices.length,label:choices[0][0],delta:getRelation("大小姐")-before};})()');
+test("hidden choice takes over its source options but can still fail",()=>{
+ const r=traitRuntime(["癫佬","电波","认真"]);
+ const v=r.json('(()=>{S.hiddenTraits=["古明地恋"];S.hiddenTraitSources["古明地恋"]=["癫佬","电波"];traitJourney("癫佬").fusedInto="古明地恋";traitJourney("电波").fusedInto="古明地恋";const choices=injectTraitChoices('+base+',{allowTraitChoices:true,eventId:"evolved",tags:["npc","social"],npc:"大小姐",sceneCategory:"campus",forceTraitChoice:true,checkDice:[1,1]});const before=getRelation("大小姐");choices[0][2]();return {length:choices.length,label:choices[0][0],delta:getRelation("大小姐")-before};})()');
  assert.equal(v.length,2);assert(v.label.startsWith("【古明地恋】"));assert(v.delta<0);
+});
+test("normal pool is random and hidden character traits never appear at setup",()=>{
+ const r=runtime();
+ const v=r.json('(()=>{let without=false,valid=true;for(let i=0;i<40;i++){setGameSeed("pool-"+i);renderPool();const names=S.pool.map(item=>item[0]);without ||= !names.includes("癫佬");valid &&= names.length===10&&new Set(names).size===10&&!names.some(name=>HIDDEN_TRAITS[name]);}return {without,valid};})()');
+ assert.deepEqual(v,{without:true,valid:true});
 });
 test("monthly exam is one decision plus result; major exam has one extra decision",()=>{
  const r=runtime();r.launch();r.run('startExam("测试月考","monthly","steady",()=>{});');
@@ -97,8 +109,35 @@ test("monthly exam is one decision plus result; major exam has one extra decisio
 });
 test("fixed rolls expose academic advantage without halting low builds",()=>{
  const r=runtime();r.launch();
- const v=r.json('(()=>{S.stats.academic=0;const low=calculateExam("low","monthly","steady",null,[3,3]).score;S.stats.academic=20;const high=calculateExam("high","monthly","steady",null,[3,3]).score;return {low,high};})()');
- assert(v.high-v.low>=120);assert(v.low>=300);
+ const v=r.json('(()=>{const score=(academic,kind)=>{S.stats.academic=academic;S.resources.energy=80;S.resources.stress=20;S.flags.examPreparation=0;return calculateExam("test",kind,"steady",null,[3,3]);};const low=score(0,"monthly"),mid=score(8,"monthly"),high=score(20,"monthly"),peak=score(30,"graduation");return {low:low.score,mid:mid.score,high:high.score,peak:peak.score,academicValue:high.parts.academicValue};})()');
+ assert(v.low>=200&&v.low<=330);assert(v.mid>=350&&v.mid<=450);assert(v.high>=510&&v.high<=600);assert(v.peak>=660&&v.peak<=735);assert.equal(v.academicValue,20);
+});
+test("exam forecast is visible before choosing and result exposes its components",()=>{
+ const r=runtime();r.launch();
+ r.run('runFixedMonth(0,()=>{});');
+ // 九月首个事件不是考试，直接打开十月月考定义。
+ r.run('const event=FIXED[10].find(item=>item.id==="y1_oct_first_exam");const choices=event.choices.map((choice,index)=>{const meta={...choice[3],preview:()=>examForecastText("monthly",choice[3].id)};return [choice[0],choice[1],choice[2],meta];});showChoices("测试",event.title,event.text,choices,()=>{}, {eventId:event.id});');
+ assert(r.elements.choices.children[0].children[0].textContent.includes("预计"));
+ const result=r.json('(()=>{S.stats.academic=20;S.resources.energy=80;S.resources.stress=20;const x=calculateExam("成绩说明","monthly","steady",null,[3,3]);return {text:examResultText(x),sum:Object.entries(x.parts).filter(([key])=>key!=="academicValue").reduce((n,[,value])=>n+value,0),score:x.score};})()');
+ assert(result.text.includes("学力20贡献 +260"));assert(result.text.includes("成绩构成"));assert.equal(result.sum,result.score);
+});
+test("energy and stress overflow create real consequences",()=>{
+ const r=runtime();r.launch();
+ const v=r.json('(()=>{S.resources.energy=2;S.resources.stress=10;changeResource("energy",-12,"测试透支");const first={...S.resources,over:S.flags.overexertionCount};S.resources.energy=50;S.resources.stress=99;changeResource("stress",11,"测试压力");return {first,second:{...S.resources,over:S.flags.stressOverflowCount}};})()');
+ assert.deepEqual(v.first,{cash:v.first.cash,energy:0,stress:18,over:1});assert.equal(v.second.energy,45);assert.equal(v.second.stress,100);assert.equal(v.second.over,1);
+});
+test("ordinary course months no longer grant free academic experience",()=>{
+ const r=runtime();r.launch();
+ const v=r.json('(()=>{S.year=1;S.month=10;S.term="高一上";S.calendarIndex=1;delete S.flags["monthStarted:1:10"];S.growth.xp.academic=0;const before=S.stats.academic;beginCalendarMonth();return {before,after:S.stats.academic,xp:S.growth.xp.academic||0,courseMonths:S.flags.courseMonths};})()');
+ assert.equal(v.before,v.after);assert.equal(v.xp,0);assert(v.courseMonths>=1);
+});
+test("all eight NPC introductions are unique and finish without an automatic second conversation",()=>{
+ const r=runtime();r.launch();
+ assert.equal(r.run('new Set(Object.values(NPC_INTROS).map(item=>item.title)).size'),8);
+ r.run('S.npcs=[];setGameRandomSource(()=>0);runRandom(0,()=>{S.flags.introFinished=true;});');
+ const expected=r.run('NPC_INTROS[Object.keys(NPCS)[0]].title');assert.equal(r.elements.title.textContent,expected);assert.equal(r.buttons().length,2);
+ r.click(0);assert.equal(r.buttons().length,1);r.click(0);
+ assert.equal(r.state().flags.introFinished,true);assert.equal(r.state().npcs.length,1);assert.equal(r.elements.title.textContent,expected);
 });
 test("seed plus identical actions reproduces all state, including random offers",()=>{
  const a=runtime(),b=runtime();a.launch({seed:"same",chaos:true});b.launch({seed:"same",chaos:true});
@@ -120,9 +159,9 @@ test("bad saves and action histories preserve the current game",()=>{
  }
 });
 test("debug cannot overwrite normal save or bypass evolution time gate",()=>{
- const r=runtime();r.launch({chaos:true});const saved=r.storage.get("fuzhong-girl-v051");
- r.run("GameDebug.prepareChaos();saveLocalGame();");assert.equal(r.storage.get("fuzhong-girl-v051"),saved);assert(!r.state().hiddenTraits.includes("古明地恋"));
- r.run("GameDebug.jump(16);");assert.equal(r.elements.title.textContent,"大家已经习惯了");
+ const r=runtime();r.launch({traits:["癫佬","电波","认真"]});const saved=r.storage.get("fuzhong-girl-v060");
+ r.run("GameDebug.prepareFusion('古明地恋');saveLocalGame();");assert.equal(r.storage.get("fuzhong-girl-v060"),saved);assert(!r.state().hiddenTraits.includes("古明地恋"));
+ r.run("GameDebug.jump(16);");assert.equal(r.elements.title.textContent,"没有人记得第一回合");
 });
 test("fixed event alternatives leave different persistent effects",()=>{
  const a=runtime(),b=runtime();a.launch();b.launch();
@@ -165,6 +204,6 @@ test("forum background posts are deterministic and do not add mandatory actions"
 test("graduation archive data reads habits, relationships and real rumors",()=>{
  const r=runtime();r.launch();
  const v=r.json('(()=>{S.exam.graduation=555;S.project={id:"archive",...PROJECTS.archive,progress:10,result:"缩小规模完成"};S.habits={study:"foundation",afterschool:"people",recovery:"sleep",tenure:{study:4,afterschool:4,recovery:4},history:[],configured:true,locked:["study","recovery"],flexible:"afterschool",socialFocus:"同人女"};ensureNpc("同人女",6);S.npcTrust["同人女"]=5;S.rumors=[{id:"doujin",title:"同人社编外人员",heard:true,response:"clarify",callbacks:[]}];return graduationCardData();})()');
- assert.equal(v.version,"0.5.1");assert.equal(v.stats.length,5);assert(v.routine.includes("基础复盘"));assert(v.relationships[0].includes("同人女"));assert.deepEqual(v.rumors,["同人社编外人员"]);assert(v.closing.length>20);
+ assert.equal(v.version,"0.6.0");assert.equal(v.stats.length,5);assert(v.routine.includes("基础复盘"));assert(v.relationships[0].includes("同人女"));assert.deepEqual(v.rumors,["同人社编外人员"]);assert(v.closing.length>20);
 });
 console.log(passed+" regression groups passed.");

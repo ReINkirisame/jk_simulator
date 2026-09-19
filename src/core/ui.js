@@ -23,7 +23,9 @@ function update(){
  $("countdown").textContent=S.phase==="graduated"?"高中生活已经写到最后一页":S.year===3?"距离毕业还有 "+Math.max(1,CALENDAR.length-S.calendarIndex)+" 个月":S.year===2?"生活习惯试验期":"还在认识这所学校";
  $("timelineFill").style.width=`${Math.round((S.calendarIndex+1)/CALENDAR.length*100)}%`;
  $("pageMark").textContent=`${String(S.calendarIndex+1).padStart(2,"0")} / ${CALENDAR.length}`;
- $("resourceRow").innerHTML=`<span>家境 · ${esc(FAMILY_BACKGROUNDS[S.family]?.label||"普通")}</span><span>零花钱 ${S.resources.cash}</span><span class="${S.resources.energy<30?"resource-warning":""}">精力 ${S.resources.energy}/100</span><span class="${S.resources.stress>=65?"resource-warning":""}">压力 ${S.resources.stress}/100</span>`;
+ const energyState=S.resources.energy<10?"已经透支":S.resources.energy<30?"疲惫":S.resources.energy>=75?"充足":"尚可";
+ const stressState=S.resources.stress>=90?"临界":S.resources.stress>=70?"过高":S.resources.stress>=40?"紧绷":"平稳";
+ $("resourceRow").innerHTML=`<div class="resource-meta"><span>家境 · ${esc(FAMILY_BACKGROUNDS[S.family]?.label||"普通")}</span><span>零花钱 ${S.resources.cash}</span></div><div class="resource-gauge ${S.resources.energy<30?"warning":""}"><div><b>精力 ${S.resources.energy}</b><span>${energyState}${S.resources.energy<30?" · 判定受影响":""}</span></div><div class="gauge-track"><i class="energy-fill" style="width:${S.resources.energy}%"></i></div></div><div class="resource-gauge ${S.resources.stress>=70?"warning":""}"><div><b>压力 ${S.resources.stress}</b><span>${stressState}${S.resources.stress>=70?" · 判定受影响":""}</span></div><div class="gauge-track"><i class="stress-fill" style="width:${S.resources.stress}%"></i></div></div>`;
  const routineVisible=Boolean(S.habits&&S.habits.configured&&S.year>=2);
  $("routineRow").classList.toggle("hidden",!routineVisible);
  $("routineRow").innerHTML=routineVisible?HABIT_SLOT_ORDER.map(slot=>{
@@ -56,14 +58,16 @@ function update(){
  const posts=(S.forumPosts||[]).slice(-6).reverse();
  $("forumCount").textContent=forumVisible?" · "+posts.length+"条近帖":"";
  $("forumList").innerHTML=posts.length?posts.map(post=>`<article class="forum-post ${post.kind==="rumor"?"hot":""}"><b>${esc(post.title)}</b><span>${esc(post.text)}</span><small>${["","高一","高二","高三"][post.year]||""} · ${post.month}月</small></article>`).join(""):"<p class='notice'>暂时没有新帖子。</p>";
- if(typeof chaosEvolutionEligibility==="function")$("debugInfo").textContent=`${S.debug?"调试局（不写入正常存档）":"正常游戏"} · 种子 ${S.rng.seed}\n癫值 ${getTraitXp("癫佬")}；人物 ${S.traitMilestones.npcs.length}；场景 ${S.traitMilestones.scenes.length}\n传闻 ${(S.rumors||[]).filter(r=>r.heard).length}/${RUMOR_DEFS.length}\n${routineVisible?habitSummaryText()+"\n":""}进化条件：${JSON.stringify(chaosEvolutionEligibility())}`;
+ if(typeof fusionStatus==="function"){
+  const growing=progressiveTraitNames().filter(name=>hasTrait(name)).map(name=>`${name} Lv.${getTraitLevel(name)}（${getTraitXp(name)}）`).join("、")||"本局没有可成长常规特质";
+  const fusions=Object.entries(fusionStatus()).map(([name,status])=>`${name}：${status.eligible?"可触发":status.selected?"条件积累中":"未选择素材"}`).join("\n");
+  $("debugInfo").textContent=`${S.debug?"调试局（不写入正常存档）":"正常游戏"} · 种子 ${S.rng.seed}\n成长：${growing}\n传闻 ${(S.rumors||[]).filter(r=>r.heard).length}/${RUMOR_DEFS.length}\n${routineVisible?habitSummaryText()+"\n":""}隐藏合成：\n${fusions}`;
+ }
 }
 
 function renderPool(){
- // 0.3 机制样板期间固定让“癫佬”进入候选池，方便不用反复刷新就能试玩新系统。
- const featured=TRAITS.find(trait=>trait[0]==="癫佬");
- const others=TRAITS.filter(trait=>trait!==featured);
- S.pool=shuffle(featured?[featured,...shuffle(others).slice(0,9)]:shuffle(others).slice(0,10));S.traits=[];
+ // 0.6.0 起，癫佬不再为了测试被固定塞进候选池；调试入口可以按需注入合成素材。
+ S.pool=shuffle(TRAITS).slice(0,10);S.traits=[];
  $("traitPool").innerHTML=S.pool.map((t,i)=>`<button type="button" class="trait" data-i="${i}" aria-pressed="false" onclick="toggleTrait(${i})"><b>${esc(t[0])}</b><span>${esc(t[1])}</span></button>`).join("");
 }
 function toggleTrait(i){
@@ -106,6 +110,8 @@ function showChoices(tag,title,text,choices,next,context={}){
    const meta=c&&c[3]||{};
    b.disabled=Boolean(meta.disabled);
    if(meta.hint)b.title=meta.hint;
+   const previewText=typeof meta.preview==="function"?meta.preview():meta.preview;
+   if(previewText){const preview=document.createElement("small");preview.className="choice-preview";preview.textContent=previewText;b.appendChild(preview);b.title=[b.title,previewText].filter(Boolean).join("\n");}
    if(meta.replacedLabel)b.title=`特质改写：本次替代「${meta.replacedLabel}」。不获得原选项的收益。`;
    bindAction(b,`choice:${context.eventId||tag+":"+title}:${meta.choiceId||meta.id||index}`,()=>{
      if(locked)return;

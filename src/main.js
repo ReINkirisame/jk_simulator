@@ -1,6 +1,6 @@
 "use strict";
 
-const GAME_VERSION="0.5.1";
+const GAME_VERSION="0.6.0";
 
 /**
  * 开发期的轻量内容检查。
@@ -18,15 +18,21 @@ function validateGameData(){
 
  const traitChoiceIds=[];
  TRAIT_CHOICE_SETS.forEach(set=>{
-   if(!traitNames.includes(set.trait))warnings.push(`特质选项组「${set.id}」引用了不存在的特质「${set.trait}」。`);
+   if(set.hidden?!HIDDEN_TRAITS[set.trait]:!traitNames.includes(set.trait))warnings.push(`特质选项组「${set.id}」引用了不存在的特质「${set.trait}」。`);
    if(!TRAIT_CHOICE_RESOLVERS[set.resolver])warnings.push(`特质选项组「${set.id}」缺少效果处理器。`);
-   [...(set.choices||[]),...(set.evolvedChoices||[])].forEach(choice=>{
+   (set.choices||[]).forEach(choice=>{
      if(!choice.id||!choice.label)warnings.push(`特质选项组「${set.id}」存在缺少 id 或文字的选项。`);
      if(choice.id)traitChoiceIds.push(choice.id);
    });
  });
  const repeatedChoiceIds=traitChoiceIds.filter((id,index)=>traitChoiceIds.indexOf(id)!==index);
  if(repeatedChoiceIds.length)warnings.push("重复特质选项 ID："+[...new Set(repeatedChoiceIds)].join("、"));
+ const hiddenNames=Object.keys(HIDDEN_TRAITS),usedSources=[];
+ FUSION_RECIPES.forEach(recipe=>{
+  if(!hiddenNames.includes(recipe.hidden)||recipe.sources.length!==2||recipe.sources.some(name=>!traitNames.includes(name)))warnings.push("隐藏特质合成定义不完整："+recipe.id);
+  recipe.sources.forEach(name=>usedSources.push(recipe.id+":"+name));
+ });
+ if(new Set(FUSION_RECIPES.map(recipe=>recipe.hidden)).size!==FUSION_RECIPES.length)warnings.push("隐藏特质合成结果重复");
 
  const eventGroups=[
    ...Object.values(FIXED),
@@ -51,7 +57,7 @@ function validateGameData(){
    if(!HABIT_SLOTS[slot]||Object.keys(HABITS[slot]||{}).length<3)warnings.push("生活习惯分类缺失："+slot);
  });
  const rumorIds=RUMOR_DEFS.map(item=>item.id);
- if(RUMOR_DEFS.length!==12)warnings.push("0.5.1应提供12条校园传闻");
+ if(RUMOR_DEFS.length!==12)warnings.push("0.6.0应提供12条校园传闻");
  if(new Set(rumorIds).size!==rumorIds.length)warnings.push("校园传闻ID重复");
  RUMOR_DEFS.forEach(item=>{
    if(!item.id||typeof item.when!=="function"||!item.title||!item.summary||!item.forum)warnings.push("校园传闻定义不完整："+(item.id||"unknown"));
@@ -81,7 +87,10 @@ globalThis.GameDebug=Object.freeze({
  check:options=>{S.debug=true;return resolveCheck(options);},
  jump:debugJump,
  prepareChaos:debugPrepareChaos,
+ prepareFusion:debugPrepareFusion,
  evolution:chaosEvolutionEligibility,
+ fusions:fusionStatus,
+ traits:()=>JSON.parse(JSON.stringify(S.traitJourneys)),
  habits:()=>JSON.parse(JSON.stringify(S.habits)),
  rumors:()=>JSON.parse(JSON.stringify(S.rumors)),
  setStat:(key,value)=>{if(ATTRIBUTES[key]&&Number.isInteger(value)&&value>=0&&value<=(key==="appearance"?20:30)){S.debug=true;S.stats[key]=value;update();}}
