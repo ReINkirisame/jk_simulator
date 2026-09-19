@@ -184,6 +184,7 @@ function examTraitEffects(){
 function calculateExam(name,kind,strategyId,momentId,dice=null){
  const strategy=EXAM_STRATEGIES[strategyId]||EXAM_STRATEGIES.steady;
  const trait=examTraitEffects();
+ const habit=habitExamEffects();
  const healthCheck=(S.stats.fitness>=16?1:S.stats.fitness<=3?-1:0)+(S.resources.energy<25?-1:0)+(S.resources.stress>=70?-1:0);
  const healthScore=(S.stats.fitness>=16?6:S.stats.fitness<=3?-6:0)+(S.resources.energy>=70?4:S.resources.energy<25?-8:0)+(S.resources.stress>=70?-8:0);
  const preparation=(Number(S.tendencies["稳妥"])||0)>=2?1:0;
@@ -195,7 +196,8 @@ function calculateExam(name,kind,strategyId,momentId,dice=null){
      {label:strategy.label,value:strategy.check},
      {label:"特质",value:trait.check},
      {label:"状态",value:healthCheck},
-     {label:"前期习惯",value:preparation},
+    {label:"稳妥倾向",value:preparation},
+    {label:habit.label,value:habit.check},
      {label:"时间分配",value:momentCheck}
    ],
    dice,
@@ -207,11 +209,11 @@ function calculateExam(name,kind,strategyId,momentId,dice=null){
  let strategyScore=strategy.score;
  if(strategyId==="risk")strategyScore={failure:-18,setback:-7,success:6,great:16}[check.grade];
  const momentScore=momentId==="pace"?4:momentId==="instinct"?(check.grade==="great"?7:check.grade==="failure"?-4:1):0;
- const total=Math.max(300,Math.min(680,Math.round(base+academic+healthScore+trait.score+strategyScore+momentScore+performance)));
+ const total=Math.max(300,Math.min(680,Math.round(base+academic+healthScore+trait.score+habit.score+strategyScore+momentScore+performance)));
  if(strategyId==="preserve"){changeResource("energy",6,"考试中保住了状态");changeResource("stress",-4);}
  else {changeResource("energy",strategyId==="risk"?-10:-5);changeResource("stress",strategyId==="risk"?6:2);}
  S.flags.examPreparation=0;
- return {name,kind,strategyId,momentId,score:total,check,parts:{base,academic,healthScore,traitScore:trait.score,strategyScore,momentScore,performance},traitLabel:trait.label};
+ return {name,kind,strategyId,momentId,score:total,check,parts:{base,academic,healthScore,traitScore:trait.score,habitScore:habit.score,strategyScore,momentScore,performance},traitLabel:trait.label,habitLabel:habit.label};
 }
 
 function saveExamResult(result){
@@ -236,7 +238,7 @@ function examResultText(result){
      :result.check.grade==="success"
        ?"你的发挥基本兑现了此前的准备。"
        :"这次不只准备充分，考场上的节奏也恰好站在了你这边。";
- return `${result.name}结束。\n\n本次成绩：${result.score} / 750\n策略：${strategy.label}\n\n${performanceText}\n\n${formatCheck(result.check)}\n\n成绩构成：学业基础 ${p.base+p.academic}，状态 ${formatSigned(p.healthScore)}，特质 ${formatSigned(p.traitScore)}，策略与临场 ${formatSigned(p.strategyScore+p.momentScore+p.performance)}。`;
+ return `${result.name}结束。\n\n本次成绩：${result.score} / 750\n策略：${strategy.label}\n长期习惯：${result.habitLabel}\n\n${performanceText}\n\n${formatCheck(result.check)}\n\n成绩构成：学业基础 ${p.base+p.academic}，状态 ${formatSigned(p.healthScore)}，特质 ${formatSigned(p.traitScore)}，习惯 ${formatSigned(p.habitScore)}，策略与临场 ${formatSigned(p.strategyScore+p.momentScore+p.performance)}。`;
 }
 
 function finishExam(name,kind,strategyId,momentId,resume,dice=null){

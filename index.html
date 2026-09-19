@@ -4,12 +4,12 @@
  <meta charset="UTF-8">
  <meta name="viewport" content="width=device-width, initial-scale=1.0">
  <meta name="description" content="附中女高模拟器：从九月入学到六月告别，用选择留下自己的三年。">
- <title>女高模拟器 · 0.5.0</title>
+ <title>女高模拟器 · 0.5.1</title>
  <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
 <div class="wrap">
- <header class="masthead"><span>附中生活手记</span><span>0.5.0 · 三年基础版</span></header>
+ <header class="masthead"><span>附中生活手记</span><span>0.5.1 · 习惯与传闻</span></header>
  <section id="setup">
   <div class="intro"><div class="eyebrow">从九月入学，到六月告别</div><h1>女高模拟器</h1><p>她不必样样出色。让擅长的事、遇见的人，和那些不太体面的瞬间，慢慢成为她。</p></div>
   <div class="card setup-card">
@@ -36,7 +36,7 @@
   </div>
  </section>
  <section id="game" class="hidden">
-  <div class="head"><div><h1>女高模拟器</h1><div class="muted">「<span id="playerNameLabel"></span>」的高中手记</div></div><div class="calendar-heading"><div class="month" id="monthLabel"></div><small id="stageLabel"></small></div></div>
+  <div class="head"><div><h1>女高模拟器</h1><div class="muted">「<span id="playerNameLabel"></span>」的高中手记</div></div><div class="calendar-heading"><div class="month" id="monthLabel"></div><small id="stageLabel"></small><div id="countdown" class="countdown"></div></div></div>
   <div class="timeline" aria-label="高中进度"><div id="timelineFill"></div></div>
   <div class="toolbar"><div class="button-row"><button onclick="saveLocalGame()">存档</button><button onclick="loadLocalGame()">读档</button><button onclick="exportGame()">导出存档</button><button onclick="document.getElementById('saveFile').click()">导入</button></div><span id="saveStatus" class="notice" role="status">选择后自动保存</span></div>
   <div class="card character-card"><div class="stats">
@@ -45,15 +45,15 @@
    <div class="stat" title="体能影响运动及每月恢复，不等于当前精力"><small>体能</small><b id="fitness">8</b><span id="xpFitness"></span></div>
    <div class="stat" title="创造用于绘画、写作、设计和策划"><small>创造</small><b id="creativity">8</b><span id="xpCreativity"></span></div>
    <div class="stat appearance-stat" title="外貌不增加信任；仪容为当月临时修正"><small>外貌</small><b id="appearance">8</b><span id="appearanceNote">缓慢变化</span></div>
-  </div><div class="resource-row" id="resourceRow"></div><div class="buffs" id="buffs"></div></div>
+  </div><div class="resource-row" id="resourceRow"></div><div id="routineRow" class="routine-row hidden"></div><div class="buffs" id="buffs"></div></div>
   <div class="grid"><div class="card story-card">
    <div class="story-topline"><span id="sectionTitle">本月手记</span><span id="pageMark"></span></div>
    <div class="scene"><div class="tag" id="tag"></div><h3 id="title"></h3><p id="text"></p></div>
    <div id="effectFeedback" class="effect-feedback" aria-live="polite"></div><div class="choices" id="choices"></div>
-  </div><aside><div class="card"><h2>正在留下的东西</h2><div id="ongoing" class="notice"></div><details class="people-details" open><summary>认识的人</summary><div id="npcList" class="npc-grid npc-list"></div></details></div><div class="card"><details><summary>高中生活记录</summary><div class="log" id="log"></div></details></div></aside></div>
+  </div><aside><div class="card"><h2>正在留下的东西</h2><div id="ongoing" class="notice"></div><details class="people-details" open><summary>认识的人</summary><div id="npcList" class="npc-grid npc-list"></div></details></div><div id="forumCard" class="card forum-card hidden"><details><summary>校园论坛 <span id="forumCount"></span></summary><div id="forumList" class="forum-list"></div></details></div><div class="card"><details><summary>高中生活记录</summary><div class="log" id="log"></div></details></div></aside></div>
   <details class="debug-panel"><summary>开发测试 · 会标记为调试局</summary><p class="notice">跳时间和改属性仅供验证，调试局不覆盖正常存档。人物与项目内容仍在扩充。</p><div class="button-row"><select id="debugMonth"></select><button onclick="GameDebug.jump(Number(document.getElementById('debugMonth').value))">跳到月份</button><button onclick="GameDebug.prepareChaos()">补齐癫佬前置（不绕过时间门槛）</button></div><pre id="debugInfo"></pre></details>
  </section>
- <section id="result" class="hidden"><div class="card"><div class="eyebrow">六月 · 毕业</div><h1 id="graduationName">她的三年</h1><div id="resultText" class="result-text"></div><div class="button-row"><button onclick="exportGame()">导出这段生活</button><button onclick="showFinishedJournal()">回看人物与记录</button><button class="primary" onclick="location.reload()">重新开始</button></div></div></section>
+ <section id="result" class="hidden"><div class="card graduation-card"><div class="eyebrow">六月 · 毕业档案</div><h1 id="graduationName">她的三年</h1><div id="resultText" class="result-text"></div><div class="button-row"><button onclick="downloadGraduationCard()">下载毕业档案图片</button><button onclick="exportGame()">导出存档</button><button onclick="showFinishedJournal()">回看人物与记录</button><button class="primary" onclick="location.reload()">重新开始</button></div></div></section>
  <input id="saveFile" class="hidden" type="file" accept=".json,application/json" onchange="importGameFile(this)">
  <div id="globalMessage" class="notice global-message" role="status"></div>
  <footer>五种起点，一段不必完美的高中生活。<span>无需联网 · 自动存档受浏览器权限影响，可导出备份</span></footer>
@@ -75,8 +75,11 @@
 <script src="./src/data/exams.js"></script>
 <script src="./src/data/events-year2.js"></script>
 <script src="./src/data/life-events.js"></script>
+<script src="./src/data/school-life.js"></script>
+<script src="./src/core/school-life-system.js"></script>
 <script src="./src/core/game.js"></script>
 <script src="./src/core/life.js"></script>
+<script src="./src/core/share-card.js"></script>
 <script src="./src/main.js"></script>
 </body>
 </html>

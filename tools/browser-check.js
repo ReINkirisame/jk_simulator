@@ -3,7 +3,7 @@
 const {chromium}=require("playwright");
 const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path");
 const base=process.argv[2]||"http://127.0.0.1:4173/";
-const output=path.resolve(__dirname,"../../qa-v0.5.0");
+const output=path.resolve(__dirname,"../../qa-v0.5.1");
 fs.mkdirSync(output,{recursive:true});
 (async()=>{
  const browser=await chromium.launch({headless:true});
@@ -55,8 +55,11 @@ fs.mkdirSync(output,{recursive:true});
   assert(count<380,"did not graduate");assert(evolution&&evolution.index>=16);assert.equal(errors.length,0,errors.join("\n"));
   await page.screenshot({path:path.join(output,"graduation.png"),fullPage:true});
   const state=await page.evaluate(()=>GameDebug.getState());
-  const [download]=await Promise.all([page.waitForEvent("download"),page.getByRole("button",{name:"导出这段生活",exact:true}).click()]);
-  const exported=JSON.parse(fs.readFileSync(await download.path(),"utf8"));assert.equal(exported.version,"0.5.0");
+  const [download]=await Promise.all([page.waitForEvent("download"),page.getByRole("button",{name:"导出存档",exact:true}).click()]);
+  const exported=JSON.parse(fs.readFileSync(await download.path(),"utf8"));assert.equal(exported.version,"0.5.1");
+  const [cardDownload]=await Promise.all([page.waitForEvent("download"),page.getByRole("button",{name:"下载毕业档案图片",exact:true}).click()]);
+  assert(cardDownload.suggestedFilename().endsWith("-毕业档案.png"));
+  assert(fs.statSync(await cardDownload.path()).size>10_000,"graduation card PNG is unexpectedly small");
   await page.getByRole("button",{name:"回看人物与记录",exact:true}).click();
   await page.getByRole("button",{name:"回到毕业画像",exact:true}).click();
   await page.reload();await page.locator("#resumeSetup").click();

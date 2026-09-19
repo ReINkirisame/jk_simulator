@@ -2,14 +2,14 @@
 
 这份指南按“两个人共同维护、仓库已经由其中一人创建”的情况编写。推荐使用 GitHub Desktop，不要求先学命令行。
 
-当前发行版为0.5.0。下面0.2～0.4的操作示例保留作历史参考；更新本版时使用新的独立分支，复制源码包中的项目内容，执行 `npm test` 后再审阅合并。当前版本已支持三年基础流程和存档，规则以 README 与 RELEASE_0.5.0.md 为准。
+当前发行版为0.5.1。下面0.2～0.4的操作示例保留作历史参考；更新本版时使用新的独立分支，复制源码包中的项目内容，执行 `npm test` 后再审阅合并。当前版本已支持三年基础流程、生活习惯、条件传闻、毕业档案和存档，规则以 README 与 RELEASE\_0.5.1.md 为准。
 
 ## 一、先理解四个词
 
-- 仓库（Repository）：GitHub 上的项目文件夹和全部历史。
-- 提交（Commit）：一次带说明的存档。
-- 分支（Branch）：从当前版本复制出一条独立修改线。
-- 拉取请求（Pull Request，简称 PR）：请求把某条分支的修改合并回 `main`。
+* 仓库（Repository）：GitHub 上的项目文件夹和全部历史。
+* 提交（Commit）：一次带说明的存档。
+* 分支（Branch）：从当前版本复制出一条独立修改线。
+* 拉取请求（Pull Request，简称 PR）：请求把某条分支的修改合并回 `main`。
 
 `main` 可以理解为“当前正式可玩的版本”。不要把尚未测试的代码直接放进去。
 
@@ -44,16 +44,6 @@
 6. 在 GitHub Desktop 提交，Summary 可写：`feat: add trait-specific choices`。
 7. `Publish branch` → `Create Pull Request`；另一人试玩确认后再合并。
 
-### 已经上传过 0.3，怎样更新到 0.4
-
-1. 在 GitHub Desktop 切回 `main`，先 `Fetch origin` / `Pull origin`。
-2. 新建分支：`feature/vertical-slice-v0.4`。
-3. 把 0.4 压缩包内项目文件夹中的全部内容复制到仓库根目录，覆盖同名文件；不要删除 `.git`。
-4. 重点试玩三件事：普通癫佬大失败、九十月阶段小结、月考与期末考试。
-5. 有 Node.js 时运行 `npm test`；三条流程都通过后再提交。
-6. Commit Summary 可写：`feat: add resolution system and vertical slice`。
-7. 推送、创建 PR，让另一人至少用不同开局再玩一次九、十月后合并。
-
 ## 三、邀请另一位合作者
 
 由仓库创建者进入 GitHub 仓库：
@@ -76,11 +66,11 @@
 
 分支名建议：
 
-- 修错误：`fix/choice-result`
-- 新功能：`feature/save-system`
-- 新内容：`content/npc-names`
-- 整理代码：`refactor/event-engine`
-- 文档：`docs/update-roadmap`
+* 修错误：`fix/choice-result`
+* 新功能：`feature/save-system`
+* 新内容：`content/npc-names`
+* 整理代码：`refactor/event-engine`
+* 文档：`docs/update-roadmap`
 
 ### 修改后
 
@@ -94,12 +84,12 @@
 
 ## 五、怎样避免两个人互相覆盖
 
-- 一次 PR 只解决一类问题。
-- 开始前在聊天里说清楚自己正在修改哪些文件。
-- 尽量不要两个人同时修改 `src/core/game.js`。
-- 内容工作可以分开：一人修改 `npcs.js`，另一人修改某个年份的事件文件。
-- PR 尚未合并时，不要在同一分支开始完全无关的新功能。
-- 出现冲突时不要随便点“Accept all”；先确认两边各自改了什么。
+* 一次 PR 只解决一类问题。
+* 开始前在聊天里说清楚自己正在修改哪些文件。
+* 尽量不要两个人同时修改 `src/core/game.js`。
+* 内容工作可以分开：一人修改 `npcs.js`，另一人修改某个年份的事件文件。
+* PR 尚未合并时，不要在同一分支开始完全无关的新功能。
+* 出现冲突时不要随便点“Accept all”；先确认两边各自改了什么。
 
 ## 六、让 GitHub Pages 显示游戏
 
@@ -130,10 +120,11 @@ AI 完成后也要查看 GitHub Desktop 的 Changes。提交历史能帮你们�
 
 ## 八、犯错了怎么办
 
-- 还没 Commit：在 GitHub Desktop 中逐个查看改动，确认后再撤销对应文件。
-- 已 Commit、未合并：继续在同一分支修正，再提交一次。
-- PR 有问题：先不要 Merge，继续修改该分支。
-- 已经合并：新建 `fix/...` 分支修复；不要直接删除一大批历史文件。
-- 完全不确定：停止操作，保存报错截图和分支名，再请另一人检查。
+* 还没 Commit：在 GitHub Desktop 中逐个查看改动，确认后再撤销对应文件。
+* 已 Commit、未合并：继续在同一分支修正，再提交一次。
+* PR 有问题：先不要 Merge，继续修改该分支。
+* 已经合并：新建 `fix/...` 分支修复；不要直接删除一大批历史文件。
+* 完全不确定：停止操作，保存报错截图和分支名，再请另一人检查。
 
 Git 的价值不是“永远不犯错”，而是让每次错误都有清楚、可恢复的边界。
+

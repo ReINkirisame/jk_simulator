@@ -14,7 +14,9 @@ function freshState(){return {
  traitProgress:{},hiddenTraits:[],
  traitChoiceState:{misses:0,lastEventId:null,recentChoiceIds:[]},
  tendencies:{},choiceHistory:[],memories:[],checks:[],npcImpressions:{},
- traitMilestones:{months:[],npcs:[],scenes:[]}
+ traitMilestones:{months:[],npcs:[],scenes:[]},
+ habits:{study:null,afterschool:null,recovery:null,tenure:{study:0,afterschool:0,recovery:0},history:[],configured:false,locked:[],flexible:null,socialFocus:null},
+ rumors:[],forumPosts:[]
 };}
 let S=freshState();
 
@@ -100,7 +102,7 @@ function addTendency(name,amount=1){
 function rememberChoice(eventId,choiceId,label,tags=[],impact=""){
  if(!Array.isArray(S.choiceHistory))S.choiceHistory=[];
  if(!Array.isArray(S.memories))S.memories=[];
- const record={eventId,choiceId,label,term:S.term,month:S.month};
+ const record={eventId,choiceId,label,tags:Array.isArray(tags)?[...tags]:[],term:S.term,month:S.month,calendarIndex:S.calendarIndex};
  S.choiceHistory.push(record);
  (Array.isArray(tags)?tags:[]).forEach(tag=>addTendency(tag));
  if(impact){
