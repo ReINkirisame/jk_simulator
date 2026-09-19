@@ -30,6 +30,9 @@ function closestNpc(){return [...S.npcs].sort((a,b)=>(S.npcTrust[b]||0)*2+getRel
 function npcGoal(name){return NPC_ARCS[name]?.goals[Math.min(2,S.year-1)]||NPCS[name]?.tag||"";}
 function nextSocialNpc(){
  if(!S.npcs.length){ensureNpc("班长",1);return "班长";}
+ normalizeSchoolLifeState();
+ if(S.habits.afterschool==="people"&&S.habits.socialFocus&&S.calendarIndex%2===0)return S.habits.socialFocus;
+ if(S.habits.afterschool==="project"&&S.project&&S.npcs.includes(S.project.partner)&&S.calendarIndex%2===1)return S.project.partner;
  // 优先看很久没有见过的人，不让每月事件始终锁在同一个对象上。
  const last=S.flags.npcLastMonth||{};
  const min=Math.min(...S.npcs.map(name=>last[name]??-1));
@@ -47,10 +50,11 @@ function createNpcScene(name){
  S.flags.npcVisits=S.flags.npcVisits||{};S.flags.npcVisits[name]=visits+1;
  const supported=S.flags["npcHelp:"+name]||0;
  const previous=supported?"\n\n她还记得你以前真的帮过忙，这次没有再从头解释。":visits?"\n\n你们已经见过几次，但她仍在试探哪些事情适合对你说。":"";
+ const rumor=consumeRumorCallback(name);
  const category=sceneCategory();
  const places={classroom:"课间的教室里",club:"放学后的活动室旁",campus:"离校前的走廊上",holiday:"假期约好的见面里"};
  const context={allowTraitChoices:true,tags:["npc","social"],sceneCategory:category,npc:name,eventId:"npc:"+S.year+":"+S.month+":"+name,serious:S.year===3&&S.month===5};
- return {id:context.eventId,title:name+" · "+scene[0],tag:"人物互动 · "+places[category],text:scene[1]+previous,context,choices:[
+ return {id:context.eventId,title:name+" · "+scene[0],tag:"人物互动 · "+places[category],text:scene[1]+previous+rumor,context,choices:[
   {id:"help",label:scene[2]+" · "+ATTRIBUTES[arc.skill].label,role:"social",replaceable:true,
    run:()=>{
     const check=activityCheck(arc.skill,scene[0],7,[{label:"相处中的信任",value:(S.npcTrust[name]||0)>=4?1:0}]);
@@ -82,11 +86,13 @@ function beginCalendarMonth(){
   gainExperience("academic",1,"日常课程积累");
   changeResource("energy",-4,"维持日常课程");
  }
- if(S.year===3){
-  const priority=S.flags.seniorPriority||"body";
-  if(priority==="study"){gainExperience("academic",2,"持续复习");changeResource("energy",-8);changeResource("stress",3);}
-  if(priority==="create"){gainExperience("creativity",2,"保留创作");changeResource("energy",-5);changeResource("stress",-2);}
-  if(priority==="body"){gainExperience("fitness",1,"规律活动");changeResource("energy",5);changeResource("stress",-4);}
+ applyHabitEffects();
+ createForumMonthPosts();
+ if(S.year===3&&S.flags.seniorPriority){
+  const priority=S.flags.seniorPriority;
+  if(priority==="study"){gainExperience("academic",1,"持续复习");changeResource("energy",-5);changeResource("stress",2);}
+  if(priority==="create"){gainExperience("creativity",1,"保留创作");changeResource("energy",-3);changeResource("stress",-1);}
+  if(priority==="body"){changeResource("energy",4,"守住身体状态");changeResource("stress",-3);}
   if(priority==="people"){
    gainExperience("expression",1,"固定联系");changeResource("stress",-3);
    const name=closestNpc();if(name)changeRelation(name,1,"没有中断的联系");
@@ -98,7 +104,7 @@ function startCalendarMonth(){
  const point=CALENDAR[S.calendarIndex];if(!point){showGraduation();return;}
  Object.assign(S,{year:point.year,month:point.month,term:point.term,phase:"month"});
  beginCalendarMonth();update();
- const proceed=()=>{
+ const runContent=()=>{
   if(point.holiday){runHolidayMonth();return;}
   if(S.year===1){
    runFixedMonth(0,()=>{
@@ -108,7 +114,10 @@ function startCalendarMonth(){
    return;
   }
   if(S.year===2){
-   if(!S.project){chooseProject(()=>runSeniorRemainder());return;}
+   if(!S.project){
+    chooseProject(()=>S.habits.configured?runSeniorRemainder():showInitialHabitSetup(()=>runSeniorRemainder()));
+    return;
+   }
    const event=Y2_EVENTS[S.month];
    if(event)runStoryEvent(event,()=>runYearTwoExam(()=>runSeniorRemainder()));
    else runSeniorRemainder();
@@ -117,12 +126,26 @@ function startCalendarMonth(){
   const event=Y3_EVENTS[S.month];
   if(event)runStoryEvent(event,runSeniorRemainder);else runSeniorRemainder();
  };
+ const proceed=()=>{
+  normalizeSchoolLifeState();
+  if(S.year===2&&S.project&&!S.habits.configured){showInitialHabitSetup(runContent);return;}
+  const reviewKey=S.year+":"+S.month;
+  if(S.year===2&&[1,3].includes(S.month)&&!S.flags["habitReview:"+reviewKey]){
+   showHabitReview(reviewKey,HABIT_SLOT_ORDER,runContent);return;
+  }
+  if(S.year===3&&!S.habits.configured)ensureDefaultHabits();
+  if(S.year===3&&S.month===1&&S.flags.seniorHabitsLocked&&!S.flags["habitReview:"+reviewKey]){
+   showHabitReview(reviewKey,[S.habits.flexible||"recovery"],runContent);return;
+  }
+  runContent();
+ };
  if(!tryChaosEvolution(proceed))proceed();
 }
 function runSeniorRemainder(){runBirthday(()=>npcInteraction(nextSocialNpc(),finishMonth));}
 function advanceCalendar(){S.calendarIndex+=1;startCalendarMonth();}
 function finishCalendarMonth(){
  if(tryChaosEvolution(finishCalendarMonth))return;
+ if(tryCampusRumor(finishCalendarMonth))return;
  if(S.year===3&&S.month===6){graduationBond(showGraduation);return;}
  if(S.year===1&&S.month===10&&!S.flags.octoberPortraitShown){showOctoberPortrait();return;}
  if(S.month===7){showYearSummary();return;}
@@ -135,10 +158,12 @@ function showYearSummary(){
  const abilities=Object.keys(ATTRIBUTES).map(key=>ATTRIBUTES[key].label+" "+S.initialStats[key]+" → "+S.stats[key]).join(" / ");
  const friend=closestNpc(),latest=S.examArchive.at(-1);
  const project=S.project?"\n\n共同项目："+S.project.name+"，"+(S.project.result||"还在进行"):"";
+ const habits=S.habits&&S.habits.configured?"\n\n目前的生活习惯："+habitSummaryText():"";
+ const rumors=S.rumors&&S.rumors.some(record=>record.heard)?"\n校园里已经出现的说法："+rumorSummaryText(5):"";
  showContinueScreen("学年手记",grade+"结束，生活还在继续",abilities+"\n\n"+
   (latest?"最近一次考试："+latest.name+" "+latest.score+"/750":"尚未记录考试")+
   (friend?"\n现在最熟悉的是"+friend+"，信任"+(S.npcTrust[friend]||0)+"。":"")+
-  project+"\n\n"+(S.year===1?"你不再只是在挑选兴趣。下学年，要试着把其中一件事做下去。":"已经完成的事和没能完成的事，都要一起带进最后一年。"),
+  project+habits+rumors+"\n\n"+(S.year===1?"你不再只是在挑选兴趣。下学年，要试着把其中一件事做下去。":"已经完成的事和没能完成的事，都要一起带进最后一年。"),
   "进入暑假",advanceCalendar);
 }
 function holidayEvent(){
@@ -151,9 +176,6 @@ function holidayEvent(){
   {id:"rest",label:"认真休息，留一点闲暇 · 恢复精力",text:"有些天没有特别值得写的事情。睡够以后，你才发现之前一直紧绷着。",effects:[FX.resource("energy",20),FX.resource("stress",-12)]}
  ];
  if(S.year===2&&S.project&&!S.project.result)choices.push({id:"project",label:"约伙伴把项目再做一段",run:()=>workOnProject("holiday"),impact:"寒假也给共同项目留了时间"});
- if(S.year===3&&S.month===1){
-  choices.forEach(c=>{const priorities={study:"study",create:"create",train:"body",rest:"body"};c.effects=[...(c.effects||[]),FX.flag("seniorPriority",priorities[c.id])];});
- }
  return {id:"holiday:"+S.year+":"+S.month,title,tag:S.term,text:routeNote+"\n\n你只选一件主要的事。学力、创造和体能不会因为放假就自动增长；外貌也不会被普通练习改变。",choices};
 }
 function runHolidayMonth(){
@@ -174,7 +196,8 @@ function workOnProject(mode){
  const p=S.project,stat=mode==="roles"||mode==="test"?"expression":p.skill;
  const check=activityCheck(stat,p.name+" · "+({roles:"商量分工",test:"公开试做",polish:"打磨",repair:"修订",holiday:"假期协作"}[mode]||"样品"),8,[
   {label:"已经形成的信任",value:(S.npcTrust[p.partner]||0)>=4?1:0},
-  {label:"早期校园经验",value:(p.skill==="academic"&&S.flags.sciencePractice)||(p.skill==="creativity"&&S.flags.lanternStyle==="creative")||(stat==="expression"&&S.flags.studentCouncilStatus==="正式干事")?1:0}
+  {label:"早期校园经验",value:(p.skill==="academic"&&S.flags.sciencePractice)||(p.skill==="creativity"&&S.flags.lanternStyle==="creative")||(stat==="expression"&&S.flags.studentCouncilStatus==="正式干事")?1:0},
+  ...habitProjectModifiers()
  ]);
  gainExperience(stat,2,"持续做项目");changeResource("energy",mode==="polish"?-10:-7);
  const amount=check.grade==="great"?3:check.margin>=0?2:1;p.progress+=amount;
@@ -186,7 +209,8 @@ function workOnProject(mode){
 function presentProject(stat){
  const check=activityCheck(stat,"项目展示",8,[
   {label:"累计准备",value:S.project.progress>=10?2:S.project.progress>=6?1:0},
-  {label:"实际测试过",value:S.flags.testedPrototype?1:0}
+  {label:"实际测试过",value:S.flags.testedPrototype?1:0},
+  ...habitProjectModifiers()
  ]);
  changeResource("energy",-8);gainExperience(stat,2,"展示共同成果");
  if(check.margin>=0){S.project.progress+=2;S.flags.projectPresented="公开展示";changeResource("stress",-5);}
@@ -248,8 +272,14 @@ function graduationPortrait(){
  const bond=S.flags.bond?S.flags.bond.name+"："+S.flags.bond.kind:"你保留了几段尚未写完的联系。";
  const legend=hasHiddenTrait("古明地恋")?"大家已经习惯了你的跳脱。"+["","高一","高二","高三"][S.flags.koishiAwakenedAt.year]+S.flags.koishiAwakenedAt.month+"月之后，那些怪事成了不用解释的共同语言。":hasTrait("癫佬")?"你给几个人留下了相当离谱的印象。有些被接住，有些伤过关系，习惯还没有变成传说。":"你没有成为最离谱的校园传说，却也留下了自己的行事方式。";
  const ending=({academic:"把问题追问到底的人",expression:"能把人与故事连接起来的人",fitness:"走过长路，还愿意继续的人",creativity:"把普通日子做成作品的人"})[strongest];
- return {title:ending,score,academic,growth,bond,legend,
-  project:S.project?S.project.name+"："+(S.project.result||"未完成")+(S.flags.projectPassedOn?"；经验已经交给下一届。":"。"):"你没有参加共同项目。",
+ const project=S.project?S.project.name+"："+(S.project.result||"未完成")+(S.flags.projectPassedOn?"；经验已经交给下一届。":"。"):"你没有参加共同项目。";
+ const relationships=[...S.npcs].sort((a,b)=>(S.npcTrust[b]||0)*2+getRelation(b)-((S.npcTrust[a]||0)*2+getRelation(a))).slice(0,4).map(name=>name+"："+relationLabel(getRelation(name))+"，信任 "+(S.npcTrust[name]||0));
+ const rumorTitles=(S.rumors||[]).filter(record=>record.heard).map(record=>record.title);
+ const routine=S.habits&&S.habits.configured?HABIT_SLOT_ORDER.map(slot=>HABIT_SLOTS[slot].label+"“"+habitDefinition(slot,S.habits[slot]).label+"”").join(" · "):"尚未形成稳定的生活习惯";
+ const unfinished=S.project&&S.project.result!=="完整交付"?"有些项目设想被留在了未完成版本里。":S.resources.stress>=70?"你离校时仍没有真正松下来。":relationships.length<2?"还有一些关系停在刚刚认识的位置。":"并不是每一件事都需要在毕业前得到答案。";
+ const first=S.project&&S.project.result==="完整交付"?"她没有把每一件事都做好，但确实把"+S.project.name+"交到了别人手里。":rumorTitles.length?"她没有成为大家描述中的全部样子，校园里却已经留下了关于她的"+rumorTitles.length+"种说法。":score>=590?"成绩单记住了她稳定的一部分，另外那些生活不会写在分数里。":"她没有成为所有人预先想象的那种优秀学生。";
+ const second=S.flags.bond?"毕业以后，"+S.flags.bond.name+"仍然知道该去哪里找到她。":S.flags.projectPassedOn?"而高二留下的经验，还会在她离开以后继续被下一届使用。":hasHiddenTrait("古明地恋")?"但那些曾经需要解释的怪话，最后真的成了几个人共同的语言。":"她带走了尚未完成的部分，也带走了重新开始的能力。";
+ return {title:ending,score,academic,growth,bond,legend,project,routine,relationships,rumors:rumorTitles,unfinished,closing:first+"\n"+second,
   state:S.resources.stress>=70?"离开校园时，你仍然绷得很紧。下一段生活里，休息也是需要认真安排的事。":S.resources.energy<25?"最后一段时间耗掉了不少精力。终于不用赶进度时，你想先睡个好觉。":"你没有把最后一点精力都交出去。毕业之后，还有余力去看看新的地方。",
   memories:S.memories.filter(m=>!m.eventId.startsWith("npc:")).slice(-6).map(m=>m.text)
  };
@@ -259,7 +289,7 @@ function showGraduation(){
  const p=graduationPortrait();
  $("setup").classList.add("hidden");$("game").classList.add("hidden");$("result").classList.remove("hidden");
  $("graduationName").textContent=S.name+"的三年";
- $("resultText").innerHTML='<p class="portrait">'+esc(p.title)+'</p><h2>学业与能力</h2><p>毕业升学考试：'+p.score+'/750（游戏成绩）\n'+esc(p.academic)+'\n\n'+esc(p.growth)+'</p><h2>完成过的事</h2><p>'+esc(p.project)+'</p><h2>留下的人与校园传说</h2><p>'+esc(p.bond)+'\n\n'+esc(p.legend)+'</p><h2>离开时的状态</h2><p>'+esc(p.state)+'</p><h2>手记里的几页</h2><p>'+p.memories.map(m=>"· "+esc(m)).join("\n")+'</p>';
+ $("resultText").innerHTML='<p class="portrait">'+esc(p.title)+'</p><div class="archive-grid"><section><h2>学业与能力</h2><p>毕业升学考试：'+p.score+'/750（游戏成绩）\n'+esc(p.academic)+'\n\n'+esc(p.growth)+'</p></section><section><h2>形成的生活方式</h2><p>'+esc(p.routine)+'</p></section><section><h2>完成过的事</h2><p>'+esc(p.project)+'</p></section><section><h2>留下的人</h2><p>'+esc(p.bond)+'\n\n'+p.relationships.map(line=>"· "+esc(line)).join("\n")+'</p></section><section><h2>校园里的说法</h2><p>'+(p.rumors.length?p.rumors.map(line=>"· “"+esc(line)+"”").join("\n"):"没有形成稳定传闻。")+'\n\n'+esc(p.legend)+'</p></section><section><h2>没有完成的事情</h2><p>'+esc(p.unfinished)+'</p></section><section><h2>离开时的状态</h2><p>'+esc(p.state)+'</p></section><section><h2>手记里的几页</h2><p>'+p.memories.map(m=>"· "+esc(m)).join("\n")+'</p></section></div><blockquote class="graduation-closing">'+esc(p.closing)+'</blockquote>';
 }
 function showFinishedJournal(){
  $("result").classList.add("hidden");$("game").classList.remove("hidden");

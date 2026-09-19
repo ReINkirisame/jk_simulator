@@ -133,11 +133,11 @@ const Y2_EVENTS={
 };
 
 const Y3_EVENTS={
- 9:{id:"y3-priority",title:"课表上没有多出来的时间",text:"高三的课表贴好了。你不需要每天重新排日程，但要决定接下来几个月，主要保住哪一块生活。可以在寒假再次调整。",choices:[
-  {id:"study",label:"把主要余力交给学业",text:"你的课余练习会更多一些，也更需要主动休息。",effects:[FX.flag("seniorPriority","study")],impact:"高三前半段优先学业"},
-  {id:"create",label:"每个月都留一点创作时间",text:"你没有把画本和稿纸全部收走。成绩重要，但这也是你想保留的自己。",effects:[FX.flag("seniorPriority","create")],impact:"高三前半段继续创作"},
-  {id:"body",label:"先守住睡眠和运动",text:"你决定不把每一小时都变成硬撑。稳定的状态会影响之后的发挥。",effects:[FX.flag("seniorPriority","body")],impact:"高三前半段优先维持状态"},
-  {id:"people",label:"给重要的人保留固定时间",text:"你们约定不必随时回复，但会留下一段真正说话的时间。",effects:[FX.flag("seniorPriority","people")],impact:"高三前半段保留固定见面"}
+ 9:{id:"y3-priority",title:"课表上没有多出来的时间",text:()=>"高三的课表贴好了。你已经形成了这样的日常：\n"+habitSummaryText()+"\n\n其中两项会成为这一年的底层，只留一个位置在寒假允许微调。现在要决定，最后一年主要保护哪一块生活。",choices:[
+  {id:"study",label:"把主要余力交给学业 · 学习方式仍可微调",text:"课余练习会更多一些。放学安排和恢复方式继续沿用高二的节奏。",run:()=>lockSeniorHabits("study"),impact:"高三优先学业，只给学习方式留下调整余地"},
+  {id:"create",label:"每个月都留一点创作时间 · 放学安排仍可微调",text:"你没有把画本和稿纸全部收走。学习和恢复方式不再频繁更换。",run:()=>lockSeniorHabits("create"),impact:"高三继续创作，只给放学安排留下调整余地"},
+  {id:"body",label:"先守住身体状态 · 恢复方式仍可微调",text:"你决定不把每一小时都变成硬撑。学习与放学后的基本节奏固定下来。",run:()=>lockSeniorHabits("body"),impact:"高三优先维持状态，只给恢复方式留下调整余地"},
+  {id:"people",label:"给重要的人保留时间 · 放学安排仍可微调",text:"你们约定不必随时回复，但会留下一段真正说话的时间。",run:()=>lockSeniorHabits("people"),impact:"高三保留重要关系，只给放学安排留下调整余地"}
  ]},
  10:{id:"y3-callback",title:"高一留下的那盏灯",text:()=>S.flags.lanternStyle==="creative"?"旧器材柜清出来一盏形状特别的花灯。有人问是不是放错了，你一眼就认出了那个不对称的轮廓。":"器材柜里清出一盏旧花灯。骨架还撑得住，只是纸边已经褪色。",choices:[
   {id:"repair",label:"花一个午休把它修好",effects:[FX.xp("creativity",2),FX.resource("energy",-5),FX.flag("keptLantern",true)],text:"灯没有重新变成崭新的样子。你保留了旧颜色，把松掉的地方重新粘好。",impact:"高三修好了高一做的花灯"},
@@ -152,9 +152,9 @@ const Y3_EVENTS={
   {id:"teach",label:"留一次时间，讲清楚当年的坑",effects:[FX.xp("expression",2),FX.resource("energy",-7),FX.flag("projectPassedOn",true)],text:"你没有说自己当年什么都会。她们反而因为你讲清楚了失败的地方，知道下一步该从哪里开始。",impact:"把项目经验交给下一届"},
   {id:"send",label:"把记录交出去，说明自己没有更多时间",effects:[FX.resource("stress",-4),FX.flag("projectPassedOn",true)],text:"你把文件整理好，写明哪些内容可以复用。交出去以后，你终于不用再替它负责到底。"}
  ]},
- 3:{id:"y3-plan-again",title:"最后三个月的安排",text:()=>"距离毕业只剩几个月。当前精力"+S.resources.energy+"、压力"+S.resources.stress+"。你可以承认此前的安排需要修改。",choices:[
-  {id:"focus",label:"集中补一个具体短板",text:"你删掉大而空的计划，只留下能检查进度的一项。",effects:[FX.flag("seniorPriority","study"),FX.xp("academic",2),FX.resource("energy",-7)]},
-  {id:"recover",label:"把恢复状态正式写进计划",text:"休息不再是做完所有事情之后才可能得到的奖励。",effects:[FX.flag("seniorPriority","body"),FX.resource("energy",12),FX.resource("stress",-10)]},
+ 3:{id:"y3-plan-again",title:"最后三个月的安排",text:()=>"距离毕业只剩几个月。当前精力"+S.resources.energy+"、压力"+S.resources.stress+"。寒假已经调整过仍有余地的部分，现在只做一次短期修正，不重新搭一套生活。",choices:[
+  {id:"focus",label:"集中补一个具体短板",text:"你删掉大而空的计划，只留下能检查进度的一项。",effects:[FX.xp("academic",2),FX.resource("energy",-7)]},
+  {id:"recover",label:"把恢复状态正式写进计划",text:"休息不再是做完所有事情之后才可能得到的奖励。",effects:[FX.resource("energy",12),FX.resource("stress",-10)]},
   {id:"keep",label:"保留现有节奏，削减不必要的活动",text:"你没有把已经坚持的东西全部推倒，只承认有些事这次做不到。",effects:[FX.resource("energy",6),FX.resource("stress",-5)]}
  ]},
  4:{id:"y3-mock2",title:"又一张成绩单之前",text:"离正式考试更近了。桌角的错题本翻得起了毛边，隔壁的人还在默背。预备铃响起，你把最后一页合上。",choices:[

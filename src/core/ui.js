@@ -11,6 +11,8 @@ function relationLabel(value){
 }
 
 function update(){
+ if(typeof normalizeSchoolLifeState==="function")normalizeSchoolLifeState();
+ document.body.setAttribute("data-year",String(S.year||1));
  Object.keys(ATTRIBUTES).forEach(key=>{
   $(key).textContent=S.stats[key];
   if(key!=="appearance")$("xp"+key[0].toUpperCase()+key.slice(1)).textContent=`经验 ${S.growth.xp[key]||0}/4`;
@@ -18,9 +20,17 @@ function update(){
  $("appearanceNote").textContent=S.flags.groomingMonth===monthKey()?`仪容 ${formatSigned(S.flags.grooming||0)}`:"缓慢变化";
  $("monthLabel").textContent=S.term+(S.month?(" · "+S.month+"月"):"");
  $("stageLabel").textContent=CALENDAR[S.calendarIndex]?.stage||"毕业";
+ $("countdown").textContent=S.phase==="graduated"?"高中生活已经写到最后一页":S.year===3?"距离毕业还有 "+Math.max(1,CALENDAR.length-S.calendarIndex)+" 个月":S.year===2?"生活习惯试验期":"还在认识这所学校";
  $("timelineFill").style.width=`${Math.round((S.calendarIndex+1)/CALENDAR.length*100)}%`;
  $("pageMark").textContent=`${String(S.calendarIndex+1).padStart(2,"0")} / ${CALENDAR.length}`;
  $("resourceRow").innerHTML=`<span>家境 · ${esc(FAMILY_BACKGROUNDS[S.family]?.label||"普通")}</span><span>零花钱 ${S.resources.cash}</span><span class="${S.resources.energy<30?"resource-warning":""}">精力 ${S.resources.energy}/100</span><span class="${S.resources.stress>=65?"resource-warning":""}">压力 ${S.resources.stress}/100</span>`;
+ const routineVisible=Boolean(S.habits&&S.habits.configured&&S.year>=2);
+ $("routineRow").classList.toggle("hidden",!routineVisible);
+ $("routineRow").innerHTML=routineVisible?HABIT_SLOT_ORDER.map(slot=>{
+   const item=habitDefinition(slot,S.habits[slot]);
+   const locked=S.year===3&&S.habits.locked.includes(slot)?" · 已锁定":" · "+habitStatus(slot);
+   return `<span title="${esc(item.desc)}"><b>${esc(HABIT_SLOTS[slot].label)}</b> ${esc(item.label+locked)}</span>`;
+ }).join(""):"";
  const traitBadges=typeof getVisibleTraitBadges==="function"
    ?getVisibleTraitBadges()
    :S.traits.map(i=>({label:S.pool[i][0],className:"",title:""}));
@@ -37,9 +47,16 @@ function update(){
  }).join(""):"<div class='notice'>暂时还没有特别认识的人。</div>";
  $("ongoing").innerHTML=[`社团：${S.club||"还没有决定"}`,`路线：${S.route||"探索中"}`,
   S.project?`共同项目：${S.project.name} · ${S.project.progress}份进展${S.project.result?` · ${S.project.result}`:""}`:"高二会开始一项共同项目。",
+  routineVisible?"生活习惯："+habitSummaryText():"",
+  S.rumors&&S.rumors.some(record=>record.heard)?"校园传闻："+rumorSummaryText():"",
   S.memories.length?S.memories[S.memories.length-1].text:"还没有留下特别的记忆。"
- ].map(line=>`<div class="ongoing-line">${esc(line)}</div>`).join("");
- if(typeof chaosEvolutionEligibility==="function")$("debugInfo").textContent=`${S.debug?"调试局（不写入正常存档）":"正常游戏"} · 种子 ${S.rng.seed}\n癫值 ${getTraitXp("癫佬")}；人物 ${S.traitMilestones.npcs.length}；场景 ${S.traitMilestones.scenes.length}\n进化条件：${JSON.stringify(chaosEvolutionEligibility())}`;
+ ].filter(Boolean).map(line=>`<div class="ongoing-line">${esc(line)}</div>`).join("");
+ const forumVisible=S.year>=2||S.phase==="graduated";
+ $("forumCard").classList.toggle("hidden",!forumVisible);
+ const posts=(S.forumPosts||[]).slice(-6).reverse();
+ $("forumCount").textContent=forumVisible?" · "+posts.length+"条近帖":"";
+ $("forumList").innerHTML=posts.length?posts.map(post=>`<article class="forum-post ${post.kind==="rumor"?"hot":""}"><b>${esc(post.title)}</b><span>${esc(post.text)}</span><small>${["","高一","高二","高三"][post.year]||""} · ${post.month}月</small></article>`).join(""):"<p class='notice'>暂时没有新帖子。</p>";
+ if(typeof chaosEvolutionEligibility==="function")$("debugInfo").textContent=`${S.debug?"调试局（不写入正常存档）":"正常游戏"} · 种子 ${S.rng.seed}\n癫值 ${getTraitXp("癫佬")}；人物 ${S.traitMilestones.npcs.length}；场景 ${S.traitMilestones.scenes.length}\n传闻 ${(S.rumors||[]).filter(r=>r.heard).length}/${RUMOR_DEFS.length}\n${routineVisible?habitSummaryText()+"\n":""}进化条件：${JSON.stringify(chaosEvolutionEligibility())}`;
 }
 
 function renderPool(){

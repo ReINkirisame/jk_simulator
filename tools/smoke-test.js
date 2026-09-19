@@ -33,6 +33,11 @@ for(const profile of profiles){
  assert.equal(new Set(seen).size,34,"calendar skipped a month");
  assert.equal(state.calendarIndex,33);
  assert(state.flags.octoberPortraitShown&&state.flags.lanternStyle&&state.examDetails.monthly);
+ assert.equal(state.habits.configured,true,"habit setup was skipped");
+ assert.equal(state.habits.history.filter(item=>item.mode==="initial"&&item.slot!=="socialFocus").length,3,"initial habits should be configured exactly once");
+ assert.equal(state.flags.seniorHabitsLocked,true,"senior habit lock was skipped");
+ assert.equal(state.habits.locked.length,2,"senior year should lock two habit slots");
+ assert(state.forumPosts.length>=30,"forum did not accumulate enough school-life posts");
  assert(state.project?.result,"project has no conclusion");
  assert(state.exam.graduation>=300&&state.exam.graduation<=750);
  assert.equal(Object.keys(state.stats).length,5);
@@ -45,5 +50,5 @@ for(const profile of profiles){
  const saved=r.json("savePayload()");
  r.run("restoreGame("+JSON.stringify(saved)+")");
  assert.deepEqual(r.json("S"),state,"graduation save mismatch");
- console.log(profile.name+": "+count+" clicks; exam "+state.exam.graduation+"; project "+state.project.result+"; evolution "+JSON.stringify(state.flags.koishiAwakenedAt||null));
+ console.log(profile.name+": "+count+" clicks; exam "+state.exam.graduation+"; project "+state.project.result+"; rumors "+state.rumors.length+"; evolution "+JSON.stringify(state.flags.koishiAwakenedAt||null));
 }

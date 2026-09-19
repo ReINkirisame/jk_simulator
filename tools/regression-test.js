@@ -120,13 +120,51 @@ test("bad saves and action histories preserve the current game",()=>{
  }
 });
 test("debug cannot overwrite normal save or bypass evolution time gate",()=>{
- const r=runtime();r.launch({chaos:true});const saved=r.storage.get("fuzhong-girl-v050");
- r.run("GameDebug.prepareChaos();saveLocalGame();");assert.equal(r.storage.get("fuzhong-girl-v050"),saved);assert(!r.state().hiddenTraits.includes("古明地恋"));
+ const r=runtime();r.launch({chaos:true});const saved=r.storage.get("fuzhong-girl-v051");
+ r.run("GameDebug.prepareChaos();saveLocalGame();");assert.equal(r.storage.get("fuzhong-girl-v051"),saved);assert(!r.state().hiddenTraits.includes("古明地恋"));
  r.run("GameDebug.jump(16);");assert.equal(r.elements.title.textContent,"大家已经习惯了");
 });
 test("fixed event alternatives leave different persistent effects",()=>{
  const a=runtime(),b=runtime();a.launch();b.launch();
  a.run('applyEffects(LEGACY_FIXED_EFFECTS["扫雪"][0]);');b.run('applyEffects(LEGACY_FIXED_EFFECTS["扫雪"][1]);');
  assert.notDeepEqual(a.state().growth,b.state().growth);assert.notEqual(a.state().resources.energy,b.state().resources.energy);
+});
+test("habits apply once per month, become stable and keep their real costs",()=>{
+ const r=runtime();r.launch();
+ const v=r.json('(()=>{S.year=2;S.month=9;S.project={id:"science",...PROJECTS.science,progress:0,result:null};S.habits={study:"foundation",afterschool:"project",recovery:"sleep",tenure:{study:0,afterschool:0,recovery:0},history:[],configured:true,locked:[],flexible:null,socialFocus:null};S.resources={cash:0,energy:50,stress:30};const first=applyHabitEffects();const duplicate=applyHabitEffects();const once={energy:S.resources.energy,stress:S.resources.stress,tenure:{...S.habits.tenure}};S.month=10;const second=applyHabitEffects();return {first,duplicate,once,second,stable:habitStatus("study"),academic:S.stats.academic};})()');
+ assert.equal(v.first,true);assert.equal(v.duplicate,false);assert.equal(v.second,true);assert.equal(v.once.energy,52);assert.equal(v.once.stress,27);assert.equal(v.once.tenure.study,1);assert.equal(v.stable,"稳定");assert(v.academic>=9);
+});
+test("senior year locks two habit slots and charges for the one allowed adjustment",()=>{
+ const r=runtime();r.launch();
+ const v=r.json('(()=>{S.year=3;S.month=9;S.habits={study:"foundation",afterschool:"club",recovery:"sleep",tenure:{study:3,afterschool:3,recovery:3},history:[],configured:true,locked:[],flexible:null,socialFocus:null};S.resources.energy=80;S.resources.stress=20;lockSeniorHabits("body");let blocked=false;try{setHabit("study","timed","test");}catch(error){blocked=true;}const changed=setHabit("recovery","exercise","test");return {blocked,changed,locked:S.habits.locked,flexible:S.habits.flexible,energy:S.resources.energy,stress:S.resources.stress};})()');
+ assert.equal(v.blocked,true);assert.equal(v.changed,true);assert.deepEqual(v.locked,["study","afterschool"]);assert.equal(v.flexible,"recovery");assert.equal(v.energy,74);assert.equal(v.stress,28);
+});
+test("a stable study habit changes exam resolution without becoming a daily click",()=>{
+ const a=runtime(),b=runtime();a.launch();b.launch();
+ a.run('S.year=2;S.habits={study:"timed",afterschool:"club",recovery:"sleep",tenure:{study:3,afterschool:3,recovery:3},history:[],configured:true,locked:[],flexible:null,socialFocus:null};');
+ b.run('S.year=2;S.habits={study:"timed",afterschool:"club",recovery:"sleep",tenure:{study:1,afterschool:3,recovery:3},history:[],configured:true,locked:[],flexible:null,socialFocus:null};');
+ const av=a.json('calculateExam("习惯测试","monthly","risk",null,[3,3])'),bv=b.json('calculateExam("习惯测试","monthly","risk",null,[3,3])');
+ assert.equal(av.habitLabel,"限时训练");assert.equal(av.check.modifierTotal-bv.check.modifierTotal,1);assert(av.score>bv.score);
+});
+test("rumors emerge from conditions, require a response and enter the forum",()=>{
+ const r=runtime();r.launch();
+ r.run('S.year=2;S.month=9;S.calendarIndex=12;S.tendencies["网络化"]=4;');
+ assert.equal(r.run("tryCampusRumor(()=>{})"),true);assert.equal(r.state().rumors[0].id,"internet-native");assert(r.state().forumPosts.some(post=>post.kind==="rumor"));assert.equal(r.elements.title.textContent,"原来她们是这样说的");
+ r.click(0);const state=r.state();assert.equal(state.rumors[0].heard,true);assert.equal(state.rumors[0].response,"embrace");assert.equal(state.rumors[0].strength,2);assert.equal(r.run("tryCampusRumor(()=>{})"),false);
+});
+test("a heard rumor returns through at most two NPC conversations",()=>{
+ const r=runtime();r.launch();
+ const v=r.json('(()=>{S.rumors=[{id:"test",title:"测试传闻",heard:true,response:"ignore",callbacks:[]}];ensureNpc("班长",2);ensureNpc("同人女",2);ensureNpc("体育生",2);return [consumeRumorCallback("班长"),consumeRumorCallback("班长"),consumeRumorCallback("同人女"),consumeRumorCallback("体育生"),S.rumors[0].callbacks];})()');
+ assert(v[0].includes("测试传闻"));assert.equal(v[1],"");assert(v[2].includes("测试传闻"));assert.equal(v[3],"");assert.deepEqual(v[4],["班长","同人女"]);
+});
+test("forum background posts are deterministic and do not add mandatory actions",()=>{
+ const a=runtime(),b=runtime();a.launch({seed:"forum"});b.launch({seed:"forum"});
+ for(const r of [a,b])r.run('S.year=2;S.month=10;S.calendarIndex=13;createForumMonthPosts();createForumMonthPosts();update();');
+ assert.equal(a.state().forumPosts.length,2);assert.deepEqual(a.state().forumPosts,b.state().forumPosts);assert.equal(a.elements.forumCard.classList.contains("hidden"),false);
+});
+test("graduation archive data reads habits, relationships and real rumors",()=>{
+ const r=runtime();r.launch();
+ const v=r.json('(()=>{S.exam.graduation=555;S.project={id:"archive",...PROJECTS.archive,progress:10,result:"缩小规模完成"};S.habits={study:"foundation",afterschool:"people",recovery:"sleep",tenure:{study:4,afterschool:4,recovery:4},history:[],configured:true,locked:["study","recovery"],flexible:"afterschool",socialFocus:"同人女"};ensureNpc("同人女",6);S.npcTrust["同人女"]=5;S.rumors=[{id:"doujin",title:"同人社编外人员",heard:true,response:"clarify",callbacks:[]}];return graduationCardData();})()');
+ assert.equal(v.version,"0.5.1");assert.equal(v.stats.length,5);assert(v.routine.includes("基础复盘"));assert(v.relationships[0].includes("同人女"));assert.deepEqual(v.rumors,["同人社编外人员"]);assert(v.closing.length>20);
 });
 console.log(passed+" regression groups passed.");

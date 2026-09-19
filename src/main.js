@@ -1,6 +1,6 @@
 "use strict";
 
-const GAME_VERSION="0.5.0";
+const GAME_VERSION="0.5.1";
 
 /**
  * 开发期的轻量内容检查。
@@ -47,6 +47,17 @@ function validateGameData(){
  const storyIds=storyEvents.map(event=>event.id);
  if(new Set(storyIds).size!==storyIds.length)warnings.push("新事件ID重复");
  if(CALENDAR.length!==34||CALENDAR[16].year!==2||CALENDAR[16].month!==1)warnings.push("日历或高二寒假门槛错误");
+ HABIT_SLOT_ORDER.forEach(slot=>{
+   if(!HABIT_SLOTS[slot]||Object.keys(HABITS[slot]||{}).length<3)warnings.push("生活习惯分类缺失："+slot);
+ });
+ const rumorIds=RUMOR_DEFS.map(item=>item.id);
+ if(RUMOR_DEFS.length!==12)warnings.push("0.5.1应提供12条校园传闻");
+ if(new Set(rumorIds).size!==rumorIds.length)warnings.push("校园传闻ID重复");
+ RUMOR_DEFS.forEach(item=>{
+   if(!item.id||typeof item.when!=="function"||!item.title||!item.summary||!item.forum)warnings.push("校园传闻定义不完整："+(item.id||"unknown"));
+ });
+ const forumIds=FORUM_POST_TEMPLATES.map(item=>item.id);
+ if(new Set(forumIds).size!==forumIds.length)warnings.push("校园论坛模板ID重复");
 
  // v0.4 纵向样板：九、十月的每一个选项都应留下可追踪的选择标识和影响说明。
  [...FIXED[9],...FIXED[10]].forEach(event=>{
@@ -71,6 +82,8 @@ globalThis.GameDebug=Object.freeze({
  jump:debugJump,
  prepareChaos:debugPrepareChaos,
  evolution:chaosEvolutionEligibility,
+ habits:()=>JSON.parse(JSON.stringify(S.habits)),
+ rumors:()=>JSON.parse(JSON.stringify(S.rumors)),
  setStat:(key,value)=>{if(ATTRIBUTES[key]&&Number.isInteger(value)&&value>=0&&value<=(key==="appearance"?20:30)){S.debug=true;S.stats[key]=value;update();}}
 });
 
