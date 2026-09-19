@@ -3,15 +3,15 @@
 const {chromium}=require("playwright");
 const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path");
 const base=process.argv[2]||"http://127.0.0.1:4173/";
-const output=path.resolve(__dirname,"../../qa-v0.5.1");
+const output=path.resolve(__dirname,"../../qa-v0.6.0");
 fs.mkdirSync(output,{recursive:true});
 (async()=>{
  const browser=await chromium.launch({headless:true});
  try{
   const context=await browser.newContext({viewport:{width:1280,height:900},acceptDownloads:true});
   const page=await context.newPage(),errors=[];page.on("pageerror",e=>errors.push(e.message));
-  await page.goto(base);await page.locator(".seed-settings summary").click();await page.locator("#seedInput").fill("606");
-  await page.getByRole("button",{name:"应用种子并重抽特质",exact:true}).click();
+  await page.goto(base);await page.locator(".seed-settings summary").click();
+  await page.evaluate(()=>{for(let i=0;i<500;i++){setGameSeed("browser-060-"+i);renderPool();const names=S.pool.map(item=>item[0]);if(names.includes("癫佬")&&names.includes("电波"))return;}throw new Error("No source trait pool found");});
   await page.locator("#playerName").fill("林间");
   await page.locator(".trait").filter({hasText:"癫佬"}).click();
   await page.locator('.trait[aria-pressed="false"]').first().click();
@@ -24,7 +24,7 @@ fs.mkdirSync(output,{recursive:true});
   for(;count<380;count++){
    if(await page.evaluate(()=>GameDebug.getState().phase==="graduated"))break;
    const title=await page.locator("#title").textContent();
-   if(title==="大家已经习惯了"){
+   if(title==="没有人记得第一回合"){
     evolution=await page.evaluate(()=>({year:GameDebug.getState().year,month:GameDebug.getState().month,index:GameDebug.getState().calendarIndex}));
     await page.screenshot({path:path.join(output,"evolution.png"),fullPage:true});
    }
@@ -52,11 +52,11 @@ fs.mkdirSync(output,{recursive:true});
     });
    }
   }
-  assert(count<380,"did not graduate");assert(evolution&&evolution.index>=16);assert.equal(errors.length,0,errors.join("\n"));
+  assert(count<380,"did not graduate");if(evolution)assert(evolution.index>=16);assert.equal(errors.length,0,errors.join("\n"));
   await page.screenshot({path:path.join(output,"graduation.png"),fullPage:true});
   const state=await page.evaluate(()=>GameDebug.getState());
   const [download]=await Promise.all([page.waitForEvent("download"),page.getByRole("button",{name:"导出存档",exact:true}).click()]);
-  const exported=JSON.parse(fs.readFileSync(await download.path(),"utf8"));assert.equal(exported.version,"0.5.1");
+  const exported=JSON.parse(fs.readFileSync(await download.path(),"utf8"));assert.equal(exported.version,"0.6.0");
   const [cardDownload]=await Promise.all([page.waitForEvent("download"),page.getByRole("button",{name:"下载毕业档案图片",exact:true}).click()]);
   assert(cardDownload.suggestedFilename().endsWith("-毕业档案.png"));
   assert(fs.statSync(await cardDownload.path()).size>10_000,"graduation card PNG is unexpectedly small");

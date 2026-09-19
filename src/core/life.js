@@ -55,7 +55,7 @@ function createNpcScene(name){
  const places={classroom:"课间的教室里",club:"放学后的活动室旁",campus:"离校前的走廊上",holiday:"假期约好的见面里"};
  const context={allowTraitChoices:true,tags:["npc","social"],sceneCategory:category,npc:name,eventId:"npc:"+S.year+":"+S.month+":"+name,serious:S.year===3&&S.month===5};
  return {id:context.eventId,title:name+" · "+scene[0],tag:"人物互动 · "+places[category],text:scene[1]+previous+rumor,context,choices:[
-  {id:"help",label:scene[2]+" · "+ATTRIBUTES[arc.skill].label,role:"social",replaceable:true,
+  {id:"help",label:scene[2]+" · "+ATTRIBUTES[arc.skill].label,role:"social",replaceable:true,preview:"精力-4 · 判定成功时关系+2、信任+1",
    run:()=>{
     const check=activityCheck(arc.skill,scene[0],7,[{label:"相处中的信任",value:(S.npcTrust[name]||0)>=4?1:0}]);
     gainExperience(arc.skill,1,"一起处理具体的事");changeResource("energy",-4);
@@ -83,7 +83,7 @@ function beginCalendarMonth(){
  changeResource("energy",recovery,"月间恢复（含体能）");
  changeResource("stress",point.holiday?-6:S.year===3?5:2,"新一个月的节奏");
  if(!point.holiday){
-  gainExperience("academic",1,"日常课程积累");
+  S.flags.courseMonths=(S.flags.courseMonths||0)+1;
   changeResource("energy",-4,"维持日常课程");
  }
  applyHabitEffects();
@@ -139,12 +139,12 @@ function startCalendarMonth(){
   }
   runContent();
  };
- if(!tryChaosEvolution(proceed))proceed();
+ if(!tryTraitFusion(proceed))proceed();
 }
 function runSeniorRemainder(){runBirthday(()=>npcInteraction(nextSocialNpc(),finishMonth));}
 function advanceCalendar(){S.calendarIndex+=1;startCalendarMonth();}
 function finishCalendarMonth(){
- if(tryChaosEvolution(finishCalendarMonth))return;
+ if(tryTraitFusion(finishCalendarMonth))return;
  if(tryCampusRumor(finishCalendarMonth))return;
  if(S.year===3&&S.month===6){graduationBond(showGraduation);return;}
  if(S.year===1&&S.month===10&&!S.flags.octoberPortraitShown){showOctoberPortrait();return;}
@@ -270,7 +270,10 @@ function graduationPortrait(){
  const growth=Object.keys(ATTRIBUTES).map(key=>ATTRIBUTES[key].label+" "+S.initialStats[key]+" → "+S.stats[key]).join(" · ");
  const academic=score>=590?"你在学业上留下了很强的积累，下一阶段可以认真选择更有挑战的方向。":score>=500?"你带着比较稳固的学业基础离开校园，也知道自己接下来还想尝试什么。":score>=430?"你的成绩里有兑现的部分，也有没能补上的短板。之后仍有不同的学校和路径可以继续探索。":"学业没有成为这三年最顺利的部分。你需要重新安排下一阶段的路径，但这张成绩单不能抹去其余经历。";
  const bond=S.flags.bond?S.flags.bond.name+"："+S.flags.bond.kind:"你保留了几段尚未写完的联系。";
- const legend=hasHiddenTrait("古明地恋")?"大家已经习惯了你的跳脱。"+["","高一","高二","高三"][S.flags.koishiAwakenedAt.year]+S.flags.koishiAwakenedAt.month+"月之后，那些怪事成了不用解释的共同语言。":hasTrait("癫佬")?"你给几个人留下了相当离谱的印象。有些被接住，有些伤过关系，习惯还没有变成传说。":"你没有成为最离谱的校园传说，却也留下了自己的行事方式。";
+ const hiddenNames=S.hiddenTraits||[];
+ const legend=hiddenNames.length
+  ?`你合成了${hiddenNames.map(name=>"【"+name+"】").join("、")}。这些角色型特质来自真实使用过的两种习惯，而不是开局直接抽到的称号。`
+  :hasTrait("癫佬")?"你把不少普通场面当成了战场。有些决斗被接住，有些也确实伤过关系；它还没有和另一种特质合成新的角色画像。":"你没有合成角色型隐藏特质，却仍留下了自己的行事方式。";
  const ending=({academic:"把问题追问到底的人",expression:"能把人与故事连接起来的人",fitness:"走过长路，还愿意继续的人",creativity:"把普通日子做成作品的人"})[strongest];
  const project=S.project?S.project.name+"："+(S.project.result||"未完成")+(S.flags.projectPassedOn?"；经验已经交给下一届。":"。"):"你没有参加共同项目。";
  const relationships=[...S.npcs].sort((a,b)=>(S.npcTrust[b]||0)*2+getRelation(b)-((S.npcTrust[a]||0)*2+getRelation(a))).slice(0,4).map(name=>name+"："+relationLabel(getRelation(name))+"，信任 "+(S.npcTrust[name]||0));
@@ -278,7 +281,8 @@ function graduationPortrait(){
  const routine=S.habits&&S.habits.configured?HABIT_SLOT_ORDER.map(slot=>HABIT_SLOTS[slot].label+"“"+habitDefinition(slot,S.habits[slot]).label+"”").join(" · "):"尚未形成稳定的生活习惯";
  const unfinished=S.project&&S.project.result!=="完整交付"?"有些项目设想被留在了未完成版本里。":S.resources.stress>=70?"你离校时仍没有真正松下来。":relationships.length<2?"还有一些关系停在刚刚认识的位置。":"并不是每一件事都需要在毕业前得到答案。";
  const first=S.project&&S.project.result==="完整交付"?"她没有把每一件事都做好，但确实把"+S.project.name+"交到了别人手里。":rumorTitles.length?"她没有成为大家描述中的全部样子，校园里却已经留下了关于她的"+rumorTitles.length+"种说法。":score>=590?"成绩单记住了她稳定的一部分，另外那些生活不会写在分数里。":"她没有成为所有人预先想象的那种优秀学生。";
- const second=S.flags.bond?"毕业以后，"+S.flags.bond.name+"仍然知道该去哪里找到她。":S.flags.projectPassedOn?"而高二留下的经验，还会在她离开以后继续被下一届使用。":hasHiddenTrait("古明地恋")?"但那些曾经需要解释的怪话，最后真的成了几个人共同的语言。":"她带走了尚未完成的部分，也带走了重新开始的能力。";
+ const hiddenClosing={"古明地恋":"但那些曾经需要解释的决斗和电波，最后真的成了几个人共同的语言。","后藤独":"而那些当面说不出的句子，最后还是沿着琴弦抵达了愿意听的人。","雪之下雪乃":"她依然相信正确，却终于学会让帮助保留边界，也给关系留下位置。"};
+ const second=S.flags.bond?"毕业以后，"+S.flags.bond.name+"仍然知道该去哪里找到她。":S.flags.projectPassedOn?"而高二留下的经验，还会在她离开以后继续被下一届使用。":hiddenNames.length?(hiddenClosing[hiddenNames[0]]||"那种由两段习惯合成的新样子，也会和她一起离开校园。") :"她带走了尚未完成的部分，也带走了重新开始的能力。";
  return {title:ending,score,academic,growth,bond,legend,project,routine,relationships,rumors:rumorTitles,unfinished,closing:first+"\n"+second,
   state:S.resources.stress>=70?"离开校园时，你仍然绷得很紧。下一段生活里，休息也是需要认真安排的事。":S.resources.energy<25?"最后一段时间耗掉了不少精力。终于不用赶进度时，你想先睡个好觉。":"你没有把最后一点精力都交出去。毕业之后，还有余力去看看新的地方。",
   memories:S.memories.filter(m=>!m.eventId.startsWith("npc:")).slice(-6).map(m=>m.text)
@@ -308,12 +312,29 @@ function debugJump(index){
  $("result").classList.add("hidden");$("game").classList.remove("hidden");
  startCalendarMonth();$("saveStatus").textContent="调试局 · 不覆盖正常存档";
 }
-function debugPrepareChaos(){
- S.debug=true;
- const index=S.pool.findIndex(t=>t[0]==="癫佬");
- if(index>=0&&!S.traits.includes(index))S.traits=[index,...S.traits.filter(i=>i!==index).slice(0,2)];
- S.traitProgress["癫佬"]=12;
- S.traitMilestones={months:CALENDAR.slice(0,12).map(p=>p.year+":"+p.month),npcs:["班长","同人女","体育生","中二病"],scenes:["classroom","club","holiday"]};
- S.traitMilestones.npcs.forEach(n=>ensureNpc(n,2));
- startCalendarMonth();$("saveStatus").textContent="调试局 · 不覆盖正常存档";
+function debugPutTraits(names){
+ const chosen=[];
+ names.forEach((name,index)=>{S.pool[index]=TRAITS.find(item=>item[0]===name);chosen.push(index);});
+ const third=S.pool.findIndex((item,index)=>index>=names.length&&item&&!names.includes(item[0]));
+ if(third>=0)chosen.push(third);
+ S.traits=chosen.slice(0,3);
 }
+function debugPrepareFusion(hidden="古明地恋"){
+ const recipe=FUSION_RECIPES.find(item=>item.hidden===hidden||item.id===hidden);if(!recipe)return false;
+ S.debug=true;debugPutTraits(recipe.sources);
+ const people=["班长","同人女","体育生","中二病"];
+ recipe.sources.forEach((name,index)=>{
+  const journey=traitJourney(name);
+  journey.xp=Math.max(recipe.minEach,Math.ceil(recipe.totalXp/2));
+  journey.months=CALENDAR.slice(0,journey.xp).map(point=>point.year+":"+point.month);
+  journey.npcs=people.slice(0,Math.max(2,recipe.minNpcs));journey.scenes=["classroom","club","holiday"].slice(0,recipe.minScenes);
+  journey.positiveNpcs=["班长","同人女"];journey.styles[index?"performance":"direct-help"]=1;
+  if(recipe.needsHighStress)journey.highStressUses=1;
+  if(recipe.needsFriction)journey.failures=1;
+  S.traitProgress[name]=journey.xp;
+ });
+ people.forEach(name=>ensureNpc(name,4));S.npcTrust["班长"]=3;
+ if(recipe.needsAcademic)S.stats.academic=Math.max(S.stats.academic,recipe.needsAcademic);
+ update();$("saveStatus").textContent="调试局 · 不覆盖正常存档";return true;
+}
+function debugPrepareChaos(){return debugPrepareFusion("古明地恋");}

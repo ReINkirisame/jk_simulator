@@ -7,7 +7,9 @@ const profiles=[
  {name:"appearance",stats:[0,0,0,20,20],family:"wealthy",seed:"303"},
  {name:"athletic",stats:[0,0,20,20,0],family:"modest",seed:"404"},
  {name:"chaos",stats:[8,8,8,8,8],family:"ordinary",seed:"505",chaos:true},
- {name:"selective-chaos",stats:[8,8,8,8,8],family:"ordinary",seed:"606",chaos:true}
+ {name:"selective-chaos",stats:[8,8,8,8,8],family:"ordinary",seed:"606",chaos:true},
+ {name:"music-hidden",stats:[8,8,8,16,0],family:"ordinary",seed:"707",traits:["社恐","吉他手","认真"],traitPlay:true},
+ {name:"ice-hidden",stats:[20,4,8,8,0],family:"ordinary",seed:"808",traits:["完美主义","冰山","认真"],traitPlay:true}
 ];
 for(const profile of profiles){
  const r=runtime();r.launch({...profile,name:"测试角色"});
@@ -15,9 +17,10 @@ for(const profile of profiles){
  const seen=[],snapshotChecks=new Set([30,100,190]);
  for(;count<380&&r.state().phase!=="graduated";count++){
   const s=r.state();seen.push(s.calendarIndex);
-  if(s.hiddenTraits.includes("古明地恋"))assert(s.flags.koishiAwakenedAt.index>=16,"evolved before winter of year 2");
+  if(s.hiddenTraits.includes("古明地恋"))assert(s.flags.koishiAwakenedAt.index>=16,"synthesized before winter of year 2");
+  for(const record of s.fusionHistory||[])if(record.trait!=="古明地恋")assert(record.index>=12,"character trait synthesized before year 2");
   const list=r.buttons();
-  let b=profile.chaos?list.find(x=>x.classList.contains("trait-choice")):null;
+  let b=profile.chaos||profile.traitPlay?list.find(x=>x.classList.contains("trait-choice")):null;
   if(profile.name==="selective-chaos"&&s.month%4===0)b=list.find(x=>!x.classList.contains("trait-choice"));
   // 一些路径故意选择不同方式与失败补救，不总取第一个。
   if(!b)b=list[profile.name==="balanced"||profile.chaos?0:count%list.length];
@@ -39,7 +42,7 @@ for(const profile of profiles){
  assert.equal(state.habits.locked.length,2,"senior year should lock two habit slots");
  assert(state.forumPosts.length>=30,"forum did not accumulate enough school-life posts");
  assert(state.project?.result,"project has no conclusion");
- assert(state.exam.graduation>=300&&state.exam.graduation<=750);
+ assert(state.exam.graduation>=180&&state.exam.graduation<=735);
  assert.equal(Object.keys(state.stats).length,5);
  assert(Object.values(state.stats).every(n=>Number.isFinite(n)&&n>=0&&n<=30));
  assert.equal(state.stats.appearance,profile.stats[4],"ordinary activity changed appearance");

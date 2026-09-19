@@ -11,7 +11,7 @@ function freshState(){return {
  interests:[],club:null,route:null,division:null,
  birthdayMonth:1,birthdayDay:1,npcs:[],npcRelation:{},
  usedRandom:[],usedRoute:{},history:[],flags:{},exam:{},examDetails:{},
- traitProgress:{},hiddenTraits:[],
+ traitProgress:{},traitJourneys:{},hiddenTraits:[],hiddenTraitSources:{},fusionHistory:[],
  traitChoiceState:{misses:0,lastEventId:null,recentChoiceIds:[]},
  tendencies:{},choiceHistory:[],memories:[],checks:[],npcImpressions:{},
  traitMilestones:{months:[],npcs:[],scenes:[]},
@@ -138,12 +138,24 @@ function randomAllocation(){
  for(let i=0;i<30;i+=1){const a=randomInt(0,4),b=randomInt(0,4);if(values[a]>0&&values[b]<20){values[a]-=1;values[b]+=1;}}
  setAllocation(values);
 }
-function changeResource(key,delta,reason=""){
+function changeResource(key,delta,reason="",options={}){
  if(!Object.hasOwn(S.resources,key)||!Number.isFinite(delta))return 0;
  const before=S.resources[key],ceiling=key==="cash"?9999:100;
- S.resources[key]=Math.max(0,Math.min(ceiling,before+delta));
+ const raw=before+delta;
+ S.resources[key]=Math.max(0,Math.min(ceiling,raw));
  const actual=S.resources[key]-before;
  if(actual)log(`${reason?reason+"；":""}${{cash:"零花钱",energy:"精力",stress:"压力"}[key]}${actual>0?"+":""}${actual}。`);
+ if(!options.skipOverflow&&key==="energy"&&delta<0&&raw<0){
+  const overflow=Math.abs(raw),stress=Math.max(1,Math.ceil(overflow*0.75));
+  S.flags.overexertionCount=(S.flags.overexertionCount||0)+1;
+  changeResource("stress",stress,"精力不足仍然硬撑",{skipOverflow:true});
+  rememberImpact("overexertion:"+monthKey(),`精力不足时仍然透支了${overflow}点行动量`);
+ }
+ if(!options.skipOverflow&&key==="stress"&&delta>0&&raw>100){
+  const overflow=raw-100,energy=Math.max(1,Math.ceil(overflow*0.5));
+  S.flags.stressOverflowCount=(S.flags.stressOverflowCount||0)+1;
+  changeResource("energy",-energy,"压力已经装不下更多事情",{skipOverflow:true});
+ }
  return actual;
 }
 function spendCash(amount,reason){if(S.resources.cash<amount)return false;changeResource("cash",-amount,reason);return true;}

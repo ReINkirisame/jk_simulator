@@ -23,10 +23,19 @@ function activityCheck(stat,label,difficulty=7,modifiers=[],dice=null){
   {label:"当月仪容",value:S.flags.groomingMonth===monthKey()?S.flags.grooming||0:0}
  ]:[
   {label:"精力充足",value:S.resources.energy>=75?1:0},
-  {label:"精力不足",value:S.resources.energy<25?-1:0},
-  {label:"压力过高",value:S.resources.stress>=70?-1:0}
+  {label:"精力不足",value:S.resources.energy<30?-1:0},
+  {label:"已经透支",value:S.resources.energy<10?-1:0},
+  {label:"压力过高",value:S.resources.stress>=70?-1:0},
+  {label:"压力临界",value:S.resources.stress>=90?-1:0}
  ];
  return resolveCheck({stat,label,difficulty,modifiers:[...mood,...modifiers],dice});
+}
+function choiceEffectPreview(effects=[],cost=0){
+ const totals={cash:cost?-cost:0,energy:0,stress:0};
+ for(const effect of effects){
+  if(effect&&effect.type==="resource"&&Object.hasOwn(totals,effect.key))totals[effect.key]+=Number(effect.value)||0;
+ }
+ return Object.entries(totals).filter(([,value])=>value).map(([key,value])=>`${{cash:"零花钱",energy:"精力",stress:"压力"}[key]}${formatSigned(value)}`).join(" · ");
 }
 function runStoryEvent(event,done){
  if(event.condition&&!event.condition()){done();return;}
@@ -35,6 +44,8 @@ function runStoryEvent(event,done){
  const list=choices.map(choice=>{
   const disabled=Boolean(choice.cost&&S.resources.cash<choice.cost);
   const label=choice.label+(choice.cost?` · ${choice.cost}元${disabled?"（余额不足）":""}`:"");
+  const examKind=typeof examKindForEvent==="function"?examKindForEvent(event.id,event.title):null;
+  const inferredPreview=examKind&&["steady","risk","preserve"].includes(choice.id)?examForecastText(examKind,choice.id):"";
   return [label,choice.text||"",action=>{
    if(choice.cost&&!spendCash(choice.cost,"活动开销"))return "零花钱不够。这次没有支付费用，也没有获得付费效果。";
    rememberChoice(event.id,choice.id,choice.label,choice.tags||[]);
@@ -50,7 +61,7 @@ function runStoryEvent(event,done){
    }
    if(choice.impact)rememberImpact(event.id,typeof choice.impact==="function"?choice.impact():choice.impact);
    return result;
-  },{id:choice.id,role:choice.role||"safe",replaceable:choice.replaceable===true,protected:choice.protected===true,disabled,hint:choice.hint||""}];
+  },{id:choice.id,role:choice.role||"safe",replaceable:choice.replaceable===true,protected:choice.protected===true,disabled,hint:choice.hint||"",preview:(typeof choice.preview==="function"?choice.preview():choice.preview)||inferredPreview||choiceEffectPreview(choice.effects||[],choice.cost||0)}];
  });
  S.history.push(event.title);
  showChoices(event.tag||"校园生活",event.title,typeof event.text==="function"?event.text():event.text,list,done,context);

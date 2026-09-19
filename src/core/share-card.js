@@ -96,7 +96,7 @@ function downloadGraduationCard(){
   drawCanvasText(ctx,data.closing,90,closingY+56,900,45,4);
   ctx.fillStyle="#93897e";ctx.font="16px Microsoft YaHei, PingFang SC, sans-serif";
   ctx.fillText("随机种子 "+data.seed+" · 相同选择会留下相同结果",78,1680);
-  saveCanvasPng(canvas,"女高模拟器-0.5.1-"+safeDownloadName(data.name)+"-毕业档案.png");
+  saveCanvasPng(canvas,"女高模拟器-0.6.0-"+safeDownloadName(data.name)+"-毕业档案.png");
   $("globalMessage").textContent="毕业档案图片已经生成。";
  }catch(error){
   $("globalMessage").textContent=error.message||"无法生成毕业档案图片。";

@@ -1,6 +1,6 @@
 {
   "name": "fuzhong-girl-simulator",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "private": true,
   "description": "女高模拟器原型：原生 HTML、CSS 与 JavaScript。",
   "scripts": {
