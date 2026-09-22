@@ -99,12 +99,22 @@ body[data-year="3"] .routine-row b{color:#6d5d55}
 .graduation-closing{margin:20px 0 0;padding:18px 20px;background:#eef3ef;border-left:3px solid #668071;white-space:pre-line;font-size:15px;line-height:2;color:#465249}
 @media(max-width:760px){.routine-row{grid-template-columns:1fr}.archive-grid{grid-template-columns:1fr}.graduation-card{padding:20px}.countdown{font-size:10px}}
 
-/* 0.6.1：卡片上讲清实际作用，长说明收在自主展开的角色手记里。 */
-.trait .trait-card-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0}
+/* 四段式卡片：名称、简介、简明效果、较浅的示例语句。 */
+.trait{display:flex;flex-direction:column;min-width:0}
+.trait .trait-card-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0;width:100%;flex-wrap:wrap}
+.trait .trait-card-heading b{color:#49473f}
+.trait .trait-card-intro{color:#716a62;line-height:1.8;margin-top:9px;overflow-wrap:anywhere}
 .trait-type{flex-shrink:0;padding:2px 7px;border:1px solid #e0e5dd;border-radius:99px;color:#667666;font-size:10px;font-weight:400;background:#f6f8f3}
 .trait .trait-card-effect{color:#686a5e;border-top:1px solid #eee9e1;padding-top:7px;margin-top:8px;line-height:1.7;overflow-wrap:anywhere}
-.trait-card-capability{display:inline-block;margin-top:9px;color:#8a8176;font-size:10px;line-height:1.6}
-.trait-card-capability.can-grow{color:#795775;background:#f5eef4;border-radius:4px;padding:2px 6px}
+.trait .trait-flavor,.trait-detail-item .trait-flavor{color:#807166;font-size:11px;line-height:1.8;overflow-wrap:anywhere}
+.trait[aria-pressed="true"] .trait-flavor{color:#75685d}
+.trait .trait-flavor{margin-top:auto;padding-top:12px}
+.trait-benefit-notice{margin-top:10px;padding:9px 11px;background:#f7f8f3;border:1px solid #e3e6da;border-radius:7px;font-size:11px;color:#65705c;line-height:1.8;overflow-wrap:anywhere}
+.trait-benefit-heading{display:flex;justify-content:space-between;gap:5px 12px;flex-wrap:wrap;font-size:10px;color:#7c8172}
+.trait-benefit-heading span{color:#8a887c}
+.trait-benefit-notice p{margin:4px 0 0}
+.trait-benefit-notice b{font-weight:500}
+.trait-benefit-notice .trait-benefit-cost{color:#906c5d}
 .trait-details{border-top:1px solid #e9e3da;margin-top:12px;padding-top:5px}
 .trait-details>summary{color:#637868}
 .trait-details h3{font-size:12px;font-weight:600;color:#6e7569;margin:17px 0 5px}

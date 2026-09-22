@@ -26,6 +26,7 @@ function update(){
  const energyState=S.resources.energy<10?"已经透支":S.resources.energy<30?"疲惫":S.resources.energy>=75?"充足":"尚可";
  const stressState=S.resources.stress>=90?"临界":S.resources.stress>=70?"过高":S.resources.stress>=40?"紧绷":"平稳";
  $("resourceRow").innerHTML=`<div class="resource-meta"><span>家境 · ${esc(FAMILY_BACKGROUNDS[S.family]?.label||"普通")}</span><span>零花钱 ${S.resources.cash}</span></div><div class="resource-gauge ${S.resources.energy<30?"warning":""}"><div><b>精力 ${S.resources.energy}</b><span>${energyState}${S.resources.energy<30?" · 判定受影响":""}</span></div><div class="gauge-track"><i class="energy-fill" style="width:${S.resources.energy}%"></i></div></div><div class="resource-gauge ${S.resources.stress>=70?"warning":""}"><div><b>压力 ${S.resources.stress}</b><span>${stressState}${S.resources.stress>=70?" · 判定受影响":""}</span></div><div class="gauge-track"><i class="stress-fill" style="width:${S.resources.stress}%"></i></div></div>`;
+ renderTraitBenefitNotice();
  const routineVisible=Boolean(S.habits&&S.habits.configured&&S.year>=2);
  $("routineRow").classList.toggle("hidden",!routineVisible);
  $("routineRow").innerHTML=routineVisible?HABIT_SLOT_ORDER.map(slot=>{
@@ -66,6 +67,13 @@ function update(){
  }
 }
 
+function renderTraitBenefitNotice(){
+ const box=$("traitBenefitNotice"),lines=currentTraitBenefitSummary();
+ box.classList.toggle("hidden",!lines.length);
+ const html=lines.length?`<div class="trait-benefit-heading">本月特质已结算 <span>来源记录，已计入上方数值</span></div>`+lines.map(line=>`<p class="trait-benefit-${line.kind}"><b>${esc(line.title)}</b> ${esc(line.text)}</p>`).join(""):"";
+ if(box.innerHTML!==html)box.innerHTML=html;
+}
+
 function renderTraitDetails(badges=[]){
  const detailBox=$("traitDetails"),formationBox=$("traitFormationInfo");
  const growing=new Set(typeof progressiveTraitNames==="function"?progressiveTraitNames():[]);
@@ -77,7 +85,7 @@ function renderTraitDetails(badges=[]){
    const locked=growing.has(name)&&typeof sourceTraitLocked==="function"&&sourceTraitLocked(name);
    const growth=locked?`已参与【${traitJourney(name).fusedInto}】合成；社交专属选项由隐藏角色接替，其他活动专属行动仍可使用，下面的普通作用与代价保留。`
     :growing.has(name)?badge?.title||"通过真正使用专属选项成长，同一特质每月最多一次。":"本版不设等级；普通作用一直有效。";
-   return `<article class="trait-detail-item"><div class="trait-detail-heading"><b>${esc(badge?.label||name)}</b><span>${esc(traitCategoryLabel(name))} · ${acquired?"后天形成":"开局选择"}</span></div><p>${esc(traitEffectDescription(name))}</p><small class="trait-growth-note">${esc(growth)}</small></article>`;
+   return `<article class="trait-detail-item"><div class="trait-detail-heading"><b>${esc(badge?.label||name)}</b><span>${esc(traitCategoryLabel(name))} · ${acquired?"后天形成":"开局选择"}</span></div><p>${esc(TRAIT_TEXTS[name]?.intro||"")}</p><p>${esc(traitEffectDescription(name))}</p><small class="trait-growth-note">${esc(growth)}</small><p class="trait-flavor">${esc(TRAIT_TEXTS[name]?.quote||"")}</p></article>`;
   });
   const hidden=typeof activeHiddenTraitNames==="function"?activeHiddenTraitNames():[];
   hidden.forEach(name=>{
@@ -101,7 +109,10 @@ function renderPool(){
  // 0.6.0 起，癫佬不再为了测试被固定塞进候选池；调试入口可以按需注入合成素材。
  S.pool=shuffle(TRAITS).slice(0,10);S.traits=[];
  const growing=new Set(typeof progressiveTraitNames==="function"?progressiveTraitNames():[]);
- $("traitPool").innerHTML=S.pool.map((t,i)=>`<button type="button" class="trait" data-i="${i}" aria-pressed="false" onclick="toggleTrait(${i})"><span class="trait-card-heading"><b>${esc(t[0])}</b><small class="trait-type">${esc(traitCategoryLabel(t[0]))}</small></span><span>${esc(t[1])}</span><span class="trait-card-effect">${esc(traitEffectDescription(t[0]))}</span><small class="trait-card-capability ${growing.has(t[0])?"can-grow":""}">${growing.has(t[0])?"可成长 · 有专属选项":"普通作用 · 本版不设等级"}</small></button>`).join("");
+ $("traitPool").innerHTML=S.pool.map(([name],i)=>{
+  const text=TRAIT_TEXTS[name];
+  return `<button type="button" class="trait" data-i="${i}" aria-pressed="false" onclick="toggleTrait(${i})"><span class="trait-card-heading"><b>${esc(name)}</b><small class="trait-type">${esc(traitCategoryLabel(name))}${growing.has(name)?" · 可成长":""}</small></span><span class="trait-card-intro">${esc(text.intro)}</span><span class="trait-card-effect">${esc(text.effect)}</span><span class="trait-flavor">${esc(text.quote)}</span></button>`;
+ }).join("");
 }
 function toggleTrait(i){
  const e=document.querySelector(`[data-i="${i}"]`);

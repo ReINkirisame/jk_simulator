@@ -450,24 +450,6 @@ function studyResult(){
  return "你把薄弱部分整理成了一张清单。练习积累成学力经验，也为下一场考试留下了准备修正。";
 }
 
-function showOctoberPortrait(){
- S.flags.octoberPortraitShown=true;
- const tendencyNames=Object.entries(S.tendencies||{}).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([name])=>name);
- const closest=[...S.npcs].sort((a,b)=>getRelation(b)-getRelation(a))[0];
- const exam=S.exam.firstMonthly?`${S.exam.firstMonthly} / 750（${S.examDetails.monthly?.check?.gradeLabel||"已完成"}）`:"尚未记录";
- const council=S.flags.studentCouncilStatus?`学生会结果是“${S.flags.studentCouncilStatus}”`:(S.flags.studentCouncilObserved?"你选择先观察学生会的实际工作":"你没有把时间交给学生会");
- const holiday=S.flags.nationalDayCompanion?`国庆时和${S.flags.nationalDayCompanion}单独出门`:(S.flags.deepenedInterest?`国庆时开始认真坚持${S.flags.deepenedInterest}`:"国庆时给自己留了一天");
- const portrait=[
-   "【九、十月人物小结】",
-   `这两个月里，你的选择更常表现出${tendencyNames.length?`“${tendencyNames.join("、")}”`:"尚未定型的倾向"}。`,
-   `你加入了${S.club||"尚未选择的社团"}；${council}。`,
-   `${holiday}。${closest?`目前最熟悉的人是${closest}，你们的关系是“${relationLabel(getRelation(closest))}”。`:"你暂时还没有特别熟悉的人。"}`,
-   `第一次月考：${exam}。花灯采用了${S.flags.lanternStyle==="creative"?"自由改造的样式":S.flags.lanternStyle==="stable"?"稳固的结构":"尚未记录的做法"}。`,
-   "这些内容已经进入长期状态；之后的事件可以读取它们，而不只是把本月台词播放一遍。"
- ].join("\n\n");
- showContinueScreen("阶段人物小结","她正在变成怎样的人",portrait,"进入11月",advanceCalendar);
-}
-
 // 学期、寒暑假和毕业流程统一由 life.js 的三年日历调度。
 
 /* ---------- 社团活动周 ---------- */

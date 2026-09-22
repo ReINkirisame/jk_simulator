@@ -79,7 +79,7 @@ function acceptTraitFormation(name){
  S.acquiredTraits.push(name);journey.acquiredAt=S.calendarIndex;
  // 形成证据不是熟练度：包括因调试或状态查询遗留的空旅程，也从零开始。
  traitSystemState();S.traitProgress[name]=0;
- S.traitJourneys[name]={xp:0,uses:0,failures:0,months:[],npcs:[],scenes:[],positiveNpcs:[],styles:{},highStressUses:0,fusedInto:null};
+ S.traitJourneys[name]={xp:0,uses:0,failures:0,months:[],npcs:[],scenes:[],positiveNpcs:[],styles:{},fusedInto:null};
  const record={type:"acquired",trait:name,year:S.year,month:S.month,index:S.calendarIndex,evidenceMonths:[...journey.months]};
  S.traitFormationHistory.push(record);
  rememberChoice(`trait-formation:${name}`,"accept",`接受后天特质【${name}】`,["后天形成"]);

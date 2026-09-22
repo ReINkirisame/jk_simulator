@@ -16,7 +16,7 @@ function traitEffectDescription(name){
  if(p.effectHelp)return p.effectHelp;
  const effects=[];
  if(p.modifier){
-  const limit=p.condition==="familiar"?"（对象关系≥3或熟悉度≥3）":p.condition==="calm"?"（当前压力<70）":"";
+  const limit=p.condition==="familiar"?"（对象关系≥3或熟悉度≥3）":p.condition==="familiarity"?"（对象熟悉度≥3；仅关系达标无效）":p.condition==="calm"?"（当前压力<70）":"";
   effects.push(`${traitDomainsText(name)}判定${formatSigned(p.modifier)}${limit}；正向特质合计最多+2`);
  }
  if(p.monthly)effects.push("每月"+Object.entries(p.monthly).map(([key,value])=>({energy:"精力",stress:"压力"}[key])+formatSigned(value)).join("、")+"（多项恢复各最多6）");
@@ -54,6 +54,10 @@ function applicableTraitProfiles(stat,domain,context={}){
   if(profile.condition==="familiar"){
    const npc=context.npc;
    if(!npc||!S.npcs.includes(npc)||(getRelation(npc)<3&&(S.npcFamiliarity[npc]||0)<3))return false;
+  }
+  if(profile.condition==="familiarity"){
+   const npc=context.npc;
+   if(!npc||!S.npcs.includes(npc)||(S.npcFamiliarity[npc]||0)<3)return false;
   }
   if(profile.condition==="calm"&&S.resources.stress>=70)return false;
   return true;
@@ -93,7 +97,7 @@ function applyMonthlyTraitBenefits(){
   const total=relevant.reduce((sum,p)=>sum+p.monthly[key],0),cap=TRAIT_MONTHLY_RECOVERY_CAP[key];
   const intended=Math.max(-cap,Math.min(cap,total));
   const actual=changeResource(key,intended,"月间特质·"+relevant.map(p=>p.name).join("、"));
-  const record={kind:"monthly",traits:relevant.map(p=>p.name),resource:key,intended,actual};
+  const record={kind:"monthly",traits:relevant.map(p=>p.name),resource:key,requested:total,intended,actual};
   recordTraitBenefit(record);applied.push(record);
  }
  return applied;
@@ -115,8 +119,10 @@ function applyTraitActivityOutcome(result,stat,domain,context={}){
   if(!profile?.cost||month.costs.includes(name))continue;
   month.costs.push(name);
   for(const [key,value] of Object.entries(profile.cost)){
+   const before={...S.resources};
    const actual=changeResource(key,value,`【${name}】本月首次发挥的额外消耗`);
-   const record={kind:"activity-cost",trait:name,resource:key,intended:value,actual,label:result.label};recordTraitBenefit(record);applied.push(record);
+   const overflow=Object.fromEntries(Object.keys(before).filter(other=>other!==key&&S.resources[other]!==before[other]).map(other=>[other,S.resources[other]-before[other]]));
+   const record={kind:"activity-cost",trait:name,resource:key,intended:value,actual,overflow,label:result.label};recordTraitBenefit(record);applied.push(record);
   }
  }
  if(usedNames.has("非酋")&&result.margin<0&&month.failureRewards<2&&ATTRIBUTES[stat]){
@@ -131,4 +137,37 @@ function applyTraitActivityOutcome(result,stat,domain,context={}){
   }
  }
  return applied;
+}
+
+// 只读取已结算记录；界面刷新、预览与读档显示都不能再次结算资源。
+function traitBenefitResourceText(record){
+ const labels={energy:"精力",stress:"压力",cash:"零花钱"};
+ let text=labels[record.resource]+formatSigned(record.actual);
+ if(record.intended!==undefined&&record.actual!==record.intended)text+=`（原定${formatSigned(record.intended)}，已按资源边界结算）`;
+ if(record.requested!==undefined&&record.requested!==record.intended)text+="（月间恢复封顶6）";
+ const overflow=Object.entries(record.overflow||{}).map(([key,value])=>labels[key]+formatSigned(value));
+ if(overflow.length)text+="；溢出转为"+overflow.join("、");
+ return text;
+}
+function currentTraitBenefitSummary(){
+ const records=(S.traitBenefits?.records||[]).filter(record=>record.month===monthKey());
+ const lines=[],monthly=records.filter(record=>record.kind==="monthly");
+ if(monthly.length)lines.push({kind:"monthly",title:"月初恢复",text:monthly.map(record=>`【${record.traits.join("、")}】${traitBenefitResourceText(record)}`).join("；")});
+ const costs=new Map();
+ for(const record of records.filter(item=>item.kind==="activity-cost")){
+  if(!costs.has(record.trait))costs.set(record.trait,[]);
+  costs.get(record.trait).push(traitBenefitResourceText(record));
+ }
+ for(const [name,items] of costs)lines.push({kind:"cost",title:`【${name}】首次发挥`,text:items.join("；")});
+ for(const record of records.filter(item=>item.kind==="failure-recovery"||item.kind==="failure-xp")){
+  let text;
+  if(record.kind==="failure-recovery")text=traitBenefitResourceText(record);
+  else{
+   const gained=record.actualXpDelta+record.actualStatDelta*ATTRIBUTE_RULES.xpPerLevel;
+   text=gained>0?`${ATTRIBUTES[record.stat].label}经验${formatSigned(gained)}`:"已达成长上限，本次没有增加经验";
+   if(record.actualStatDelta>0)text+=`（积累升为${ATTRIBUTES[record.stat].label}${formatSigned(record.actualStatDelta)}）`;
+  }
+  lines.push({kind:"recovery",title:"【非酋】失败复盘",text});
+ }
+ return lines;
 }

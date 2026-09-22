@@ -155,7 +155,6 @@ function finishCalendarMonth(){
  if(tryTraitFusion(finishCalendarMonth))return;
  if(tryCampusRumor(finishCalendarMonth))return;
  if(S.year===3&&S.month===6){graduationBond(showGraduation);return;}
- if(S.year===1&&S.month===10&&!S.flags.octoberPortraitShown){showOctoberPortrait();return;}
  if(S.month===7){showYearSummary();return;}
  const recent=S.memories.slice(S.flags.monthMemoryStart||0).slice(-2).map(m=>"· "+m.text).join("\n");
  const fatigue=S.resources.energy<25?"你已经很累，下个月值得给休息留一点位置。":S.resources.stress>=70?"紧绷的感觉没有自动消失。之后的决定要给恢复留一点余地。":"你收好书包，准备把这个月翻过去。";
@@ -337,13 +336,10 @@ function debugPrepareFusion(hidden="古明地恋"){
   journey.xp=Math.max(recipe.minEach,Math.ceil(recipe.totalXp/2));
   journey.months=CALENDAR.slice(0,journey.xp*2).filter((point,monthIndex)=>monthIndex%2===index).map(point=>point.year+":"+point.month);
   journey.npcs=people.slice(0,Math.max(2,recipe.minNpcs));journey.scenes=["classroom","club","holiday"].slice(0,recipe.minScenes);
-  journey.positiveNpcs=["班长","同人女"];journey.styles[index?"performance":"direct-help"]=1;
-  if(recipe.needsHighStress)journey.highStressUses=1;
-  if(recipe.needsFriction)journey.failures=1;
+  journey.positiveNpcs=["班长","同人女"];journey.styles[index?"signal":"battle"]=1;
   S.traitProgress[name]=journey.xp;
  });
  people.forEach(name=>ensureNpc(name,4));S.npcTrust["班长"]=3;
- if(recipe.needsAcademic)S.stats.academic=Math.max(S.stats.academic,recipe.needsAcademic);
  update();$("saveStatus").textContent="调试局 · 不覆盖正常存档";return true;
 }
 function debugPrepareChaos(){return debugPrepareFusion("古明地恋");}

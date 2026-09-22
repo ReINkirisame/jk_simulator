@@ -3,8 +3,6 @@
 // 常规特质会成长；角色型隐藏特质只能由两项常规特质与实际经历合成。
 const HIDDEN_TRAITS={
  "古明地恋":{enabled:true,sources:["癫佬","电波"],desc:"战斗本能与电波思路混在一起。你会跳过别人以为必需的前因后果，仍可能让人跟不上。"},
- "后藤独":{enabled:false,sources:["社恐","吉他手"],desc:"暂未开放的机制样板。"},
- "雪之下雪乃":{enabled:false,sources:["完美主义","冰山"],desc:"暂未开放的机制样板。"}
 };
 
 const TRAIT_LEVEL_THRESHOLDS=[0,4,8];
@@ -95,28 +93,6 @@ const TRAIT_CHOICE_SETS=[
    {id:"koishi-cut",style:"premise",label:"砍断绕圈子的话，回答她没问出口的问题",result:"你挥手切断了对话的前半段，把答案放在她还没腾空的位置上。"}
   ]
  },
- {
-  id:"bocchi",trait:"后藤独",hidden:true,enabled:false,sources:["社恐","吉他手"],resolver:"traitNpc",requiredTags:["npc","social"],offerChance:.84,
-  replaceRoles:["bold","social"],stat:"creativity",difficulty:8,cost:{energy:-4,stress:4},
-  relation:{failure:-1,setback:0,success:2,great:3},tags:["舞台","琴弦表达"],
-  choices:[
-   {id:"bocchi-intro",style:"performance",label:"把自我介绍藏进一段即兴前奏",result:"你没能直视她，却让旋律替你完整地说出了“我也想加入”。"},
-   {id:"bocchi-box",style:"indirect",label:"躲在最不显眼的位置完成这次合奏",result:"你没有站到中心，声音却从角落稳稳接住了空下来的那一拍。"},
-   {id:"bocchi-mistake",style:"performance",label:"让手抖留在第一小节，然后继续弹",result:"第一小节暴露了全部紧张。第二小节开始，大家却真的跟上了你。"},
-   {id:"bocchi-song",style:"music",label:"把没法当面说的话写成只给她听的短歌",result:"歌词绕了很多弯。她听完以后，仍准确指出了你最不敢直说的那一句。"}
-  ]
- },
- {
-  id:"yukino",trait:"雪之下雪乃",hidden:true,enabled:false,sources:["完美主义","冰山"],resolver:"traitNpc",requiredTags:["npc","social"],offerChance:.84,
-  replaceRoles:["bold","social"],stat:"academic",difficulty:8,cost:{energy:-4,stress:2},
-  relation:{failure:-2,setback:0,success:2,great:3},tags:["委托","正确与关系"],
-  choices:[
-   {id:"yukino-diagnose",style:"precision",label:"把问题、责任和可执行部分一次说清",result:"你的分析准确得让人无法躲开，也锋利得不给自尊留下太多缓冲。"},
-   {id:"yukino-help",style:"direct-help",label:"拒绝空泛安慰，提出今天能完成的帮助",result:"你没有保证结局，只把第一步整理好，等她决定要不要一起走。"},
-   {id:"yukino-boundary",style:"direct",label:"指出她真正需要的不是替做，而是共同承担",result:"你把界线画得很清楚，然后坐在界线这一边陪她处理自己的部分。"},
-   {id:"yukino-imperfect",style:"direct-help",label:"允许方案不完美，但不允许它不诚实",result:"你删掉漂亮却做不到的承诺。留下的版本规模更小，终于可以交出去。"}
-  ]
- }
 ];
 
 // 活动专属选项拥有自己的判定与结算，不调用被替换选项的效果。
@@ -179,12 +155,4 @@ const FUSION_RECIPES=[
   title:"没有人记得第一回合",tag:"隐藏特质 · 合成事件",
   text:"寒假聚会时，你把两把直尺拍在桌上，宣布决斗已经进入第二阶段。奇怪的是，没有人追问第一阶段。有人接过武器，有人开始分析敌方机制，另一边甚至替你补上了不存在的规则。\n\n一路积累的战斗冲动和跳跃电波终于变成了同一种、不再需要解释的行动方式。",
   accept:"省略说明，继续第二阶段",acceptText:"获得隐藏特质【古明地恋】。癫佬与电波仍显示在档案中；社交专属选项由古明地恋接管，学习、项目等普通活动中的原有做法继续保留。两项来源不能再次用于合成。"},
- {id:"bocchi",hidden:"后藤独",enabled:false,sources:["社恐","吉他手"],earliestIndex:12,minEach:3,totalXp:10,minNpcs:2,minScenes:2,sharedPositive:true,needsPerformance:true,needsHighStress:true,needsTrusted:true,
-  title:"琴弦替你说完的那句话",tag:"隐藏特质 · 合成事件",
-  text:"小型演出开始以前，你在后台把自我介绍默念了很多遍。真正走出去时，那几句话还是全部消失了。\n\n于是你低头弹下第一个和弦。紧张没有消失，手也仍在抖；可那个一直见过你逃避和练习的人听懂了，并在下一拍加入。",
-  accept:"让第二小节继续下去",acceptText:"获得隐藏特质【后藤独】。社恐与吉他手的普通专属选项由新的角色特质接管；舞台仍会带来真实压力。"},
- {id:"yukino",hidden:"雪之下雪乃",enabled:false,sources:["完美主义","冰山"],earliestIndex:12,minEach:3,totalXp:10,minNpcs:2,minScenes:2,sharedPositive:true,needsAcademic:16,needsDirectHelp:true,needsFriction:true,
-  title:"正确答案之外的委托",tag:"隐藏特质 · 合成事件",
-  text:"她来找你时，已经听说你总能看见问题，也总会把多余的话删掉。桌上的方案漏洞很多，当事人也并不准备把责任全部交给你。\n\n你第一次没有选择独自修到完美。你指出错误、划清边界，然后问她愿不愿意一起完成剩下的部分。",
-  accept:"接下这份有边界的委托",acceptText:"获得隐藏特质【雪之下雪乃】。完美主义与冰山仍是来路，但人物选项由新的合成特质接管；正确也仍可能刺伤关系。"}
 ];

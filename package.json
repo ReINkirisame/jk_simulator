@@ -1,10 +1,10 @@
 {
   "name": "fuzhong-girl-simulator",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "private": true,
   "description": "女高模拟器原型：原生 HTML、CSS 与 JavaScript。",
   "scripts": {
-    "test": "node tools/regression-test.js && node tools/trait-v061-test.js && node tools/smoke-test.js",
+    "test": "node tools/regression-test.js && node tools/trait-v061-test.js && node tools/trait-v062-test.js && node tools/smoke-test.js",
     "build": "node tools/build-standalone.js",
     "test:standalone": "npm run build && node tools/standalone-test.js"
   }

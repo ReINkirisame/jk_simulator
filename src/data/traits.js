@@ -1,24 +1,4 @@
-const TRAITS=[
-["二次元","四斋蒸鹅心"],["Kpop","五女一是（）（）（）！"],["社恐","社交好可怕，还是一个人待着比较好"],
-["开朗","很容易把陌生的场面聊热起来"],["现充","大家一起搞好关系吧！"],["阴暗b","现充都爆炸吧..."],["文艺b","我想死也想去巴黎"],
-["吉他手","习惯用和弦、节拍与排练表达自己"],["地下偶像","果然xx酱最可爱了"],["认真","对学习和自己答应的事情比较上心"],
-["文学少女","今天的风儿有些喧嚣呢"],["傲娇","才、才不是这种性格呢！"],["大小姐","desuwa~"],["运动少女","喜欢运动，体育活动更容易进入生活"],
-["卷王","东亚小妹能量巨大！"],["社交悍匪","全体目光向我看齐！我宣布个事"],["佛系","随便啦都可以啦"],["熬夜人","你跑不过我你信吗"],
-["完美主义","希望事情做到最好，也容易给自己压力"],["吃货","小笼包叉烧包奶黄芝麻豆沙包"],["摄影爱好者","咔嚓——"],
-["手账少女","喜欢整理、规划和记录生活"],["追星族","很容易通过共同偶像认识朋友"],["猫派","看到猫会忍不住停下来"],
-["社团狂魔","很喜欢参加学校里的各种活动"],["天生卷王","提高一分干掉千人"],["慢热","刚认识别人比较冷淡，熟悉后关系稳定"],
-["话痨","哎我跟你说"],["低调","不喜欢成为全班焦点"],["好胜心","很在意竞争和输赢"],["玉玉","流泪猫猫头"],
-["日麻","断幺！1000！"],["交际花","认识不同圈子的人很自然，班里到处都有熟人"],["三无","只要微笑就好了"],
-["天赋","有些事情上手特别快，别人练很久你却能迅速抓到感觉"],["舞萌","要开始了哦"],["冒失","呜哇又平地摔了"],
-["直率","直球！"],["刺头","凭什么啊！"],["中二病","邪王真眼是最强的"],["校园偶像","哦呼~"],
-["管人痴","攒钱给最喜欢的主播上舰"],["电波","在天台向创世神大人通话"],["键政","鉴证英雄"],
-["神人","你牛大了"],["中庸之道","第三名才是最好的"],["动画区up主","我给了其他动画区up主六年的时间"],
-["小博主","用镜头记录生活"],["小网红","欢迎收看高中生小博主的一天"],["白切黑","我是她朋友~"],["钝感力","不太容易被小事影响"],
-["冰山","看起来很冷淡，不容易主动亲近别人"],["外冷内热","嘴上不说，实际上很会照顾人"],
-["coser","2.5次元的诱惑"],["电竞选手","我觉得我是"],["漫画家","会把日常拆成分镜、台词和截稿日"],["Vtuber","用虚拟连接世界"],
-["欧皇","关键尝试总能多一点顺风；判定有固定好运补正，不会暗改骰子"],["非酋","尝试常遇逆风，但失败会留下额外复盘经验；不是只有坏处"],
-["癫佬","把日常分歧看成决斗，把难题看成可以砍断、切开、剁碎的敌人" ]
-];
+const TRAITS=Object.entries(TRAIT_TEXTS).map(([name,text])=>[name,text.intro]);
 
 // 类型回答“它是什么”；可成长、专属选项、后天形成是独立能力，不混在类型里。
 // 领域修正由 trait-benefits.js 统一结算；此处不隐含加好感、加能力或改骰子。
@@ -42,7 +22,7 @@ const TRAIT_PROFILES={
  "大小姐":{category:"生活",skill:"expression",domains:["presentation","project"],modifier:1},
  "运动少女":{category:"生活",skill:"fitness",domains:["sport"],modifier:1,monthly:{energy:2}},
  "卷王":{category:"生活",skill:"academic",domains:["study","exam","competition"],modifier:1,cost:{energy:-2,stress:1}},
- "社交悍匪":{category:"性格",skill:"expression",domains:["social","presentation"],modifier:1},
+ "社交悍匪":{category:"性格",skill:"expression",domains:["social","presentation"],modifier:2,cost:{energy:-3,stress:1}},
  "佛系":{category:"生活",skill:"expression",domains:[],modifier:0,monthly:{stress:-2,energy:1}},
  "熬夜人":{category:"生活",skill:"creativity",domains:["project","creative","online"],modifier:1,cost:{energy:-3}},
  "完美主义":{category:"性格",skill:"academic",domains:["project","study","exam"],modifier:1,cost:{stress:2}},
@@ -52,9 +32,9 @@ const TRAIT_PROFILES={
  "追星族":{category:"兴趣",skill:"expression",domains:["performance","social"],modifier:1},
  "猫派":{category:"兴趣",skill:"expression",domains:[],modifier:0,monthly:{stress:-2}},
  "社团狂魔":{category:"生活",skill:"expression",domains:["club","project"],modifier:1},
- "天生卷王":{category:"生活",skill:"academic",domains:["study","exam","competition"],modifier:1,cost:{energy:-2,stress:1}},
- "慢热":{category:"性格",skill:"expression",domains:["social"],modifier:1,condition:"familiar"},
- "话痨":{category:"性格",skill:"expression",domains:["social","presentation"],modifier:1},
+ "天生卷王":{category:"生活",skill:"academic",domains:["study","exam"],modifier:1,cost:{energy:-1}},
+ "慢热":{category:"性格",skill:"expression",domains:["social"],modifier:2,condition:"familiarity"},
+ "话痨":{category:"性格",skill:"expression",domains:["social","online"],modifier:1},
  "低调":{category:"性格",skill:"creativity",domains:["creative","project"],modifier:1},
  "好胜心":{category:"性格",skill:"fitness",domains:["competition","sport","performance"],modifier:1,cost:{stress:1}},
  "玉玉":{category:"生活",skill:"creativity",domains:[],modifier:0,monthly:{stress:-2},effectHelp:"固定给低落留一个休息出口：每月压力-2。这是自我照顾，不是把心理疾病当作能力。"},
@@ -64,7 +44,7 @@ const TRAIT_PROFILES={
  "天赋":{category:"性格",skill:"academic",domains:["competition","project"],modifier:1},
  "舞萌":{category:"兴趣",skill:"fitness",domains:["sport","performance"],modifier:1},
  "冒失":{category:"性格",skill:"creativity",domains:["creative","project"],modifier:1,cost:{energy:-1}},
- "直率":{category:"性格",skill:"expression",domains:["social","presentation"],modifier:1},
+ "直率":{category:"性格",skill:"expression",domains:["social","project"],modifier:1},
  "刺头":{category:"性格",skill:"expression",domains:["project","competition"],modifier:1},
  "中二病":{category:"网络",skill:"creativity",domains:["creative","performance"],modifier:1},
  "校园偶像":{category:"性格",skill:"expression",domains:["presentation","performance"],modifier:1},

@@ -1,6 +1,6 @@
 "use strict";
 
-const GAME_VERSION="0.6.1";
+const GAME_VERSION="0.6.2";
 
 /**
  * 开发期的轻量内容检查。
@@ -11,8 +11,9 @@ function validateGameData(){
  const traitNames=TRAITS.map(item=>item[0]);
  const duplicates=traitNames.filter((name,index)=>traitNames.indexOf(name)!==index);
  if(duplicates.length)warnings.push("重复特质："+[...new Set(duplicates)].join("、"));
+ if(traitNames.some(name=>["intro","effect","quote"].some(key=>!TRAIT_TEXTS[name]?.[key])))warnings.push("四段式特质文本缺失");
  if(traitNames.length!==60||traitNames.some(name=>!TRAIT_PROFILES[name]?.category||!TRAIT_PROFILES[name]?.skill||!traitEffectDescription(name)))warnings.push("普通特质分类或作用说明缺失");
- if(enabledFusionRecipes().length!==1||enabledFusionRecipes()[0]?.hidden!=="古明地恋")warnings.push("0.6.1仅开放古明地恋");
+ if(Object.keys(HIDDEN_TRAITS).length!==1||FUSION_RECIPES.length!==1||enabledFusionRecipes()[0]?.hidden!=="古明地恋")warnings.push("隐藏角色与配方应只保留古明地恋");
 
  Object.entries(NPCS).forEach(([name,npc])=>{
    if(!npc||!npc.desc||!npc.tag)warnings.push(`NPC「${name}」缺少描述或标签。`);

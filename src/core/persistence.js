@@ -1,6 +1,6 @@
 "use strict";
 
-const SAVE_SCHEMA=1,SAVE_KEY="fuzhong-girl-v061";
+const SAVE_SCHEMA=1,SAVE_KEY="fuzhong-girl-v062";
 let Session={initial:null,actions:[],replaying:false,screenActions:new Map()};
 function resetScreenActions(){Session.screenActions=new Map();}
 function bindAction(button,key,run){
@@ -44,7 +44,7 @@ function saveLocalGame(automatic=false){
  }
 }
 function validateSave(data){
- if(!data||data.schema!==SAVE_SCHEMA||data.version!==GAME_VERSION)throw new Error("存档版本不兼容。0.6.1新增特质作用与后天形成，需要本版本存档；旧存档请用对应旧版打开。");
+ if(!data||data.schema!==SAVE_SCHEMA||data.version!==GAME_VERSION)throw new Error("存档版本不兼容。0.6.2调整了事件流程和特质规则，需要本版本存档；旧存档请用对应旧版打开。");
  const c=data.initial;
  if(!c||typeof c.name!=="string"||!c.name.trim()||c.name.length>12)throw new Error("存档中的名字无效。");
  if(!c.stats||Object.keys(c.stats).length!==5||Object.keys(ATTRIBUTES).some(key=>!Object.hasOwn(c.stats,key))||allocationError(c.stats))throw new Error("存档中的初始属性无效。");
