@@ -1,6 +1,6 @@
 "use strict";
 
-const SAVE_SCHEMA=1,SAVE_KEY="fuzhong-girl-v060";
+const SAVE_SCHEMA=1,SAVE_KEY="fuzhong-girl-v061";
 let Session={initial:null,actions:[],replaying:false,screenActions:new Map()};
 function resetScreenActions(){Session.screenActions=new Map();}
 function bindAction(button,key,run){
@@ -44,7 +44,7 @@ function saveLocalGame(automatic=false){
  }
 }
 function validateSave(data){
- if(!data||data.schema!==SAVE_SCHEMA||data.version!==GAME_VERSION)throw new Error("存档版本不兼容。0.6.0重做了特质成长与隐藏合成，需要本版本存档。");
+ if(!data||data.schema!==SAVE_SCHEMA||data.version!==GAME_VERSION)throw new Error("存档版本不兼容。0.6.1新增特质作用与后天形成，需要本版本存档；旧存档请用对应旧版打开。");
  const c=data.initial;
  if(!c||typeof c.name!=="string"||!c.name.trim()||c.name.length>12)throw new Error("存档中的名字无效。");
  if(!c.stats||Object.keys(c.stats).length!==5||Object.keys(ATTRIBUTES).some(key=>!Object.hasOwn(c.stats,key))||allocationError(c.stats))throw new Error("存档中的初始属性无效。");
@@ -95,7 +95,7 @@ function exportGame(){
  try{
   const text=JSON.stringify(savePayload(),null,2);
   const url=URL.createObjectURL(new Blob([text],{type:"application/json"}));
-  const a=document.createElement("a");a.href=url;a.download=`女高模拟器-0.6.0-${S.name.replace(/[\\/:*?"<>|]/g,"_")}-${S.term}${S.month}月.json`;
+  const a=document.createElement("a");a.href=url;a.download=`女高模拟器-${GAME_VERSION}-${S.name.replace(/[\\/:*?"<>|]/g,"_")}-${S.term}${S.month}月.json`;
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
  }catch(error){$("globalMessage").textContent=error.message;}
 }

@@ -2,9 +2,9 @@
 
 // 常规特质会成长；角色型隐藏特质只能由两项常规特质与实际经历合成。
 const HIDDEN_TRAITS={
- "古明地恋":{sources:["癫佬","电波"],desc:"战斗本能与电波思路混在一起。你会跳过别人以为必需的前因后果，仍可能让人跟不上。"},
- "后藤独":{sources:["社恐","吉他手"],desc:"越难当面说出的话，越可能从琴弦与舞台缝隙里被听见；登台依然要付出压力。"},
- "雪之下雪乃":{sources:["完美主义","冰山"],desc:"冷静、准确，也会直接伸手解决问题；正确不等于总能照顾到关系。"}
+ "古明地恋":{enabled:true,sources:["癫佬","电波"],desc:"战斗本能与电波思路混在一起。你会跳过别人以为必需的前因后果，仍可能让人跟不上。"},
+ "后藤独":{enabled:false,sources:["社恐","吉他手"],desc:"暂未开放的机制样板。"},
+ "雪之下雪乃":{enabled:false,sources:["完美主义","冰山"],desc:"暂未开放的机制样板。"}
 };
 
 const TRAIT_LEVEL_THRESHOLDS=[0,4,8];
@@ -96,7 +96,7 @@ const TRAIT_CHOICE_SETS=[
   ]
  },
  {
-  id:"bocchi",trait:"后藤独",hidden:true,sources:["社恐","吉他手"],resolver:"traitNpc",requiredTags:["npc","social"],offerChance:.84,
+  id:"bocchi",trait:"后藤独",hidden:true,enabled:false,sources:["社恐","吉他手"],resolver:"traitNpc",requiredTags:["npc","social"],offerChance:.84,
   replaceRoles:["bold","social"],stat:"creativity",difficulty:8,cost:{energy:-4,stress:4},
   relation:{failure:-1,setback:0,success:2,great:3},tags:["舞台","琴弦表达"],
   choices:[
@@ -107,7 +107,7 @@ const TRAIT_CHOICE_SETS=[
   ]
  },
  {
-  id:"yukino",trait:"雪之下雪乃",hidden:true,sources:["完美主义","冰山"],resolver:"traitNpc",requiredTags:["npc","social"],offerChance:.84,
+  id:"yukino",trait:"雪之下雪乃",hidden:true,enabled:false,sources:["完美主义","冰山"],resolver:"traitNpc",requiredTags:["npc","social"],offerChance:.84,
   replaceRoles:["bold","social"],stat:"academic",difficulty:8,cost:{energy:-4,stress:2},
   relation:{failure:-2,setback:0,success:2,great:3},tags:["委托","正确与关系"],
   choices:[
@@ -119,16 +119,71 @@ const TRAIT_CHOICE_SETS=[
  }
 ];
 
+// 活动专属选项拥有自己的判定与结算，不调用被替换选项的效果。
+// domains 是必要的语义边界：例如琴弦不会凭空出现在普通考试里。
+const TRAIT_ACTIVITY_SETS=[
+ {id:"dianlao-activity",trait:"癫佬",resolver:"traitActivity",mode:"battle",stat:"expression",difficulty:8,
+  offerChance:.82,cost:{energy:-9,stress:2},tags:["战斗脑","活动"],
+  choices:[
+   {id:"dian-study-boss",domains:["study"],style:"battle",label:"‘杀杀杀！’把错题拆成这一轮的敌方单位",result:"你在草稿纸上写下作战顺序，逐个攻击真正卡住的知识点。喊得再响，也得自己把步骤算完。"},
+   {id:"dian-project-cut",domains:["project","creation"],style:"cut",label:"砍断、切开、剁碎这个卡住的方案",result:"你把废案拆成能单独验证的小块。决斗对象是眼前的问题，没人需要真的挨上一刀。"},
+   {id:"dian-match",domains:["competition"],style:"duel",label:"‘战斗，爽！’把这轮比赛当成正式决斗",result:"你按规则确认场地与目标，给自己立下这一回合必须完成的动作。兴奋不能免除体力消耗。"},
+   {id:"dian-stage",minLevel:2,domains:["performance"],style:"performance",label:"宣布舞台进入 Boss 战第二阶段",result:"你把上场前的慌乱喊成开战口号，然后按排练过的顺序真正开始。"}
+  ]},
+ {id:"denpa-activity",trait:"电波",resolver:"traitActivity",mode:"experiment",stat:"creativity",difficulty:8,
+  offerChance:.78,cost:{energy:-7,stress:1},tags:["电波","试验"],
+  choices:[
+   {id:"denpa-study",domains:["study"],style:"premise",label:"假设答案来自另一条路，再把省略的证明补齐",result:"你从一个奇怪的联想往回推。只有把每一步补全，它才算方法，而不是恰好猜中。"},
+   {id:"denpa-prototype",domains:["project"],style:"worldline",label:"按另一个版本的设想，先做一块能验证的样品",result:"你给跳跃的念头画出测试边界，决定用一个小样品检查它究竟能不能用。"},
+   {id:"denpa-dream",domains:["creation","music"],style:"signal",label:"把那个说不清的片段转成别人能看见或听见的草稿",result:"你试着固定脑内飘过的形状与节奏。素材必须真正留下来，灵感才不只是一句‘我懂了’。"}
+  ]},
+ {id:"shy-activity",trait:"社恐",resolver:"traitActivity",mode:"rehearse",stat:"expression",difficulty:7,
+  offerChance:.76,cost:{energy:-6,stress:2},tags:["社恐","排练"],
+  choices:[
+   {id:"shy-project-note",domains:["project"],style:"indirect",label:"先写出一份完整交接说明，再决定怎么开口",result:"你把会在说话时漏掉的细节留在纸上。这份说明仍要经得起检查，并不会自动完成全部工作。"},
+   {id:"shy-performance",domains:["performance","music"],style:"performance",label:"先完整排练一遍，把最难开口的部分写进提示卡",result:"你没有逼自己突然变得外向，只给下一步留下一条紧张时也找得到的路。"},
+   {id:"shy-creation",minLevel:2,domains:["creation"],style:"indirect",label:"做出一个能独立说明想法的小样，先不急着公开",result:"没有旁人即时评价的几分钟里，你把卡住的表达写进作品，再检查它是不是说清了。"}
+  ]},
+ {id:"guitar-activity",trait:"吉他手",resolver:"traitActivity",mode:"music",stat:"creativity",difficulty:7,
+  offerChance:.80,cost:{energy:-7,stress:1},tags:["音乐","练习"],
+  choices:[
+   {id:"guitar-practice",domains:["music"],style:"music",label:"只练最不稳的四小节，录下来听一次",result:"你没有从头刷一遍熟悉的部分，而是让节拍器和录音暴露真正的问题。"},
+   {id:"guitar-live",domains:["performance"],style:"performance",label:"把练过的吉他段落完整弹完，失误后也不重启",result:"你选择一段确实练过的内容。现场不是零成本的能力展示，手和注意力都要坚持到最后。"},
+   {id:"guitar-compose",minLevel:2,domains:["creation"],style:"music",label:"写一段有开头和结尾的吉他小曲",result:"你先定下很小的规模，再把和弦、节奏和结尾接在一起。今天要留下的是一段能重放的作品。"}
+  ]},
+ {id:"perfect-activity",trait:"完美主义",resolver:"traitActivity",mode:"precision",stat:"academic",difficulty:8,
+  offerChance:.78,cost:{energy:-10,stress:4},tags:["完美主义","校验"],
+  choices:[
+   {id:"perfect-study",domains:["study"],style:"precision",label:"把这一类错题逐项验算，直到找出重复出错的原因",result:"你给每一步写上依据。检查比原计划更费时，也让模糊地带逐渐露出边界。"},
+   {id:"perfect-project",domains:["project"],style:"precision",label:"为这一版做一张严格但有限的验收清单",result:"你把检查范围限定在这一版，逐项复现最容易出错的地方，不顺手追加新的目标。"},
+   {id:"perfect-creation",domains:["creation","music"],style:"redo",label:"把最影响整体的一处重做，再交出这个版本",result:"你只挑一个真正影响完成度的缺口，却仍不得不付出返工的时间与精力。"},
+   {id:"perfect-performance",minLevel:2,domains:["performance","competition"],style:"performance",label:"按检查表完整模拟一轮，最后明确停止修改",result:"你试着把标准用于准备，而不是在临场时继续扩大标准。检查越认真，剩下的体力越需要计算。"}
+  ]},
+ {id:"ice-activity",trait:"冰山",resolver:"traitActivity",mode:"boundary",stat:"expression",difficulty:7,
+  offerChance:.76,cost:{energy:-4,stress:-2},tags:["冰山","边界"],
+  choices:[
+   {id:"ice-project",domains:["project"],style:"direct-help",label:"只接下能按时完成的一小段，把边界写清楚",result:"你去掉含糊的承诺，在可承担的范围内开始工作。进展不会很快，但也没有把别人的任务全部搬到自己身上。"},
+   {id:"ice-competition",domains:["competition","performance"],style:"direct",label:"退出无关的热闹，按自己的准备清单做完下一步",result:"你把注意力留给眼前可控的动作。别人如何评价你的冷淡，不能替代这次实际准备。"},
+   {id:"ice-creation",minLevel:2,domains:["creation"],style:"direct",label:"不急着解释，先把承诺过的最小版本做出来",result:"你删去宣传与铺垫，把今天能兑现的部分留在作品里。规模很小，却有明确的结束位置。"}
+  ]}
+];
+TRAIT_ACTIVITY_SETS.forEach(set=>{
+ set.requiredTags=[];
+ set.replaceRoles=["study","project","music","performance","competition","creation","bold","social"];
+ set.when=context=>Boolean(context.activityDomain)&&set.choices.some(choice=>choice.domains.includes(context.activityDomain));
+ TRAIT_CHOICE_SETS.push(set);
+});
+
 const FUSION_RECIPES=[
- {id:"koishi",hidden:"古明地恋",sources:["癫佬","电波"],earliestIndex:16,minEach:4,totalXp:12,minNpcs:4,minScenes:3,sharedPositive:true,
+ {id:"koishi",hidden:"古明地恋",enabled:true,sources:["癫佬","电波"],earliestIndex:16,minEach:4,totalXp:12,minDistinctMonths:12,minNpcs:4,minScenes:3,sharedPositive:true,
   title:"没有人记得第一回合",tag:"隐藏特质 · 合成事件",
   text:"寒假聚会时，你把两把直尺拍在桌上，宣布决斗已经进入第二阶段。奇怪的是，没有人追问第一阶段。有人接过武器，有人开始分析敌方机制，另一边甚至替你补上了不存在的规则。\n\n一路积累的战斗冲动和跳跃电波终于变成了同一种、不再需要解释的行动方式。",
-  accept:"省略说明，继续第二阶段",acceptText:"获得隐藏特质【古明地恋】。癫佬与电波仍显示在档案中，但专属选项由新的合成特质接管。"},
- {id:"bocchi",hidden:"后藤独",sources:["社恐","吉他手"],earliestIndex:12,minEach:3,totalXp:10,minNpcs:2,minScenes:2,sharedPositive:true,needsPerformance:true,needsHighStress:true,needsTrusted:true,
+  accept:"省略说明，继续第二阶段",acceptText:"获得隐藏特质【古明地恋】。癫佬与电波仍显示在档案中；社交专属选项由古明地恋接管，学习、项目等普通活动中的原有做法继续保留。两项来源不能再次用于合成。"},
+ {id:"bocchi",hidden:"后藤独",enabled:false,sources:["社恐","吉他手"],earliestIndex:12,minEach:3,totalXp:10,minNpcs:2,minScenes:2,sharedPositive:true,needsPerformance:true,needsHighStress:true,needsTrusted:true,
   title:"琴弦替你说完的那句话",tag:"隐藏特质 · 合成事件",
   text:"小型演出开始以前，你在后台把自我介绍默念了很多遍。真正走出去时，那几句话还是全部消失了。\n\n于是你低头弹下第一个和弦。紧张没有消失，手也仍在抖；可那个一直见过你逃避和练习的人听懂了，并在下一拍加入。",
   accept:"让第二小节继续下去",acceptText:"获得隐藏特质【后藤独】。社恐与吉他手的普通专属选项由新的角色特质接管；舞台仍会带来真实压力。"},
- {id:"yukino",hidden:"雪之下雪乃",sources:["完美主义","冰山"],earliestIndex:12,minEach:3,totalXp:10,minNpcs:2,minScenes:2,sharedPositive:true,needsAcademic:16,needsDirectHelp:true,needsFriction:true,
+ {id:"yukino",hidden:"雪之下雪乃",enabled:false,sources:["完美主义","冰山"],earliestIndex:12,minEach:3,totalXp:10,minNpcs:2,minScenes:2,sharedPositive:true,needsAcademic:16,needsDirectHelp:true,needsFriction:true,
   title:"正确答案之外的委托",tag:"隐藏特质 · 合成事件",
   text:"她来找你时，已经听说你总能看见问题，也总会把多余的话删掉。桌上的方案漏洞很多，当事人也并不准备把责任全部交给你。\n\n你第一次没有选择独自修到完美。你指出错误、划清边界，然后问她愿不愿意一起完成剩下的部分。",
   accept:"接下这份有边界的委托",acceptText:"获得隐藏特质【雪之下雪乃】。完美主义与冰山仍是来路，但人物选项由新的合成特质接管；正确也仍可能刺伤关系。"}

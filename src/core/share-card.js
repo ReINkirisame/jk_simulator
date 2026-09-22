@@ -8,7 +8,7 @@ function graduationCardData(){
   title:portrait.title,
   score:portrait.score,
   stats:Object.entries(ATTRIBUTES).map(([key,item])=>({label:item.label,value:S.stats[key],initial:S.initialStats[key]})),
-  traits:S.traits.map(index=>S.pool[index]&&S.pool[index][0]).filter(Boolean).concat(S.hiddenTraits||[]),
+  traits:ownedTraitNames().map(name=>name+(S.acquiredTraits.includes(name)?"（后天）":"")).concat(activeHiddenTraitNames()),
   club:S.club||"没有固定社团",
   route:S.route||"仍在探索",
   routine:portrait.routine,
@@ -96,7 +96,7 @@ function downloadGraduationCard(){
   drawCanvasText(ctx,data.closing,90,closingY+56,900,45,4);
   ctx.fillStyle="#93897e";ctx.font="16px Microsoft YaHei, PingFang SC, sans-serif";
   ctx.fillText("随机种子 "+data.seed+" · 相同选择会留下相同结果",78,1680);
-  saveCanvasPng(canvas,"女高模拟器-0.6.0-"+safeDownloadName(data.name)+"-毕业档案.png");
+  saveCanvasPng(canvas,"女高模拟器-"+GAME_VERSION+"-"+safeDownloadName(data.name)+"-毕业档案.png");
   $("globalMessage").textContent="毕业档案图片已经生成。";
  }catch(error){
   $("globalMessage").textContent=error.message||"无法生成毕业档案图片。";
