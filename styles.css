@@ -98,3 +98,32 @@ body[data-year="3"] .routine-row b{color:#6d5d55}
 .archive-grid section p{margin:0;font-size:12px;line-height:1.9}
 .graduation-closing{margin:20px 0 0;padding:18px 20px;background:#eef3ef;border-left:3px solid #668071;white-space:pre-line;font-size:15px;line-height:2;color:#465249}
 @media(max-width:760px){.routine-row{grid-template-columns:1fr}.archive-grid{grid-template-columns:1fr}.graduation-card{padding:20px}.countdown{font-size:10px}}
+
+/* 0.6.1：卡片上讲清实际作用，长说明收在自主展开的角色手记里。 */
+.trait .trait-card-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0}
+.trait-type{flex-shrink:0;padding:2px 7px;border:1px solid #e0e5dd;border-radius:99px;color:#667666;font-size:10px;font-weight:400;background:#f6f8f3}
+.trait .trait-card-effect{color:#686a5e;border-top:1px solid #eee9e1;padding-top:7px;margin-top:8px;line-height:1.7;overflow-wrap:anywhere}
+.trait-card-capability{display:inline-block;margin-top:9px;color:#8a8176;font-size:10px;line-height:1.6}
+.trait-card-capability.can-grow{color:#795775;background:#f5eef4;border-radius:4px;padding:2px 6px}
+.trait-details{border-top:1px solid #e9e3da;margin-top:12px;padding-top:5px}
+.trait-details>summary{color:#637868}
+.trait-details h3{font-size:12px;font-weight:600;color:#6e7569;margin:17px 0 5px}
+.trait-detail-item{border-left:2px solid #d2ddcf;background:#fafbf8;padding:9px 11px;margin:9px 0;min-width:0}
+.trait-detail-heading{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.trait-detail-heading b{font-size:12px;font-weight:600}
+.trait-detail-heading span{font-size:10px;color:#858879}
+.trait-detail-item p{font-size:11px;color:#697162;line-height:1.8;margin:5px 0;overflow-wrap:anywhere}
+.trait-growth-note{display:block;font-size:10px;line-height:1.7;color:#8b8077;overflow-wrap:anywhere}
+.trait-detail-item.hidden-detail{border-left-color:#b19abd;background:#fcf8fe}
+.trait-detail-item.hidden-detail p{color:#77627f}
+.trait-formation-count{font-size:11px;color:#75806e;line-height:1.8;margin:9px 0}
+.trait-formation-row{border-top:1px solid #ece9e1;padding:8px 0}
+.trait-formation-row>div{display:flex;gap:10px;justify-content:space-between;align-items:baseline;flex-wrap:wrap}
+.trait-formation-row b{font-size:11px;font-weight:600;color:#676b60}
+.trait-formation-row span{font-size:10px;color:#958677}
+.trait-formation-row p{font-size:10px;line-height:1.75;margin:4px 0;color:#8b8174;overflow-wrap:anywhere}
+.trait-formation-row .formation-ready{color:#4c7b59}
+.trait-formation-more{margin-top:4px}
+.trait-formation-more>summary{font-size:11px}
+.choice-replacement{display:block;border-top:1px dashed #ddc9da;margin-top:7px;padding-top:6px;font-size:10px;font-weight:400;line-height:1.7;color:#876881;overflow-wrap:anywhere}
+@media(max-width:760px){.trait-details{margin-top:10px}.trait-detail-item{padding:8px 10px}.trait-card-effect{font-size:11px}.choice-replacement{font-size:11px}}

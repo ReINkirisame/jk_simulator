@@ -1,4 +1,4 @@
-# 当前代码结构（0.6.0）
+# 当前代码结构（0.6.1）
 
 ## 加载与状态
 
@@ -14,7 +14,9 @@
 | family / resources | 家境；零花钱、精力、压力 |
 | npcs / npcRelation / npcTrust | 已认识人物、关系、信任 |
 | traitJourneys / traitProgress | 每项成长特质的经验、月份、人物、场景、成功对象与行为风格；兼容进度镜像 |
-| hiddenTraits / hiddenTraitSources / fusionHistory | 隐藏特质、来源锁定与合成历史 |
+| hiddenTraits / hiddenTraitSources / fusionHistory | 隐藏结果、来源与历史；对外只读取启用的角色 |
+| acquiredTraits / traitFormation / traitFormationHistory | 后天特质、跨月行为证据、暂缓期限与自主接受历史 |
+| traitBenefits | 普通特质每月结算锁、首次消耗、非酋复盘次数与实际效果 |
 | flags / choiceHistory / memories | 条件、选择记录、重要记忆 |
 | project / examArchive | 共同项目、历次考试 |
 | habits | 三类习惯、持续月数、变更记录、高三锁定与社交焦点 |
@@ -22,16 +24,16 @@
 | rng | 种子与当前随机状态 |
 | journal / debug | 日志与调试局标记 |
 
-npcFamiliarity 是预留的熟悉度计数，本版未将它做成独立判定轴；特质“已经熟悉”修正读取关系值。旧 `traitMilestones` 字段仍留在新状态中供旧结构辨认，但0.6.0合成只读 `traitJourneys`。
+npcFamiliarity 是相处熟悉度计数；慢热、傲娇的基础作用要求对象关系≥3或熟悉度≥3，其他“已经熟悉”的情境修正按各自明示条件读取关系。旧 `traitMilestones` 字段仍留在新状态中供旧结构辨认，当前合成只读 `traitJourneys`。
 
 ## 三年主流程
 
-life.js 根据 attributes.js 中的 CALENDAR 推进月份：月间收入与恢复 → 可触发的合成事件 → 当月内容 → 生日及人物互动 → 月末或学年小结。
+life.js 根据 attributes.js 中的 CALENDAR 推进月份：月间收入、恢复与特质基础作用 → 可触发的合成事件 → 当月内容 → 生日及人物互动 → 月末后天形成、合成/传闻与小结。
 
 - 高一：保留旧固定事件、路线和随机事件，补充真实效果、外貌场景与八个独立人物初遇。初遇选完即结束，不立即串联第二场人物对话。
 - 高二：选择一项项目和三类生活习惯，经历分工、试做、预算、展示与交付；1月、3月可各复盘一次习惯。
 - 高三：9月选择优先方向并锁定两类既有习惯，寒假只允许调整剩余一类；经历模拟考试、旧事回收、告别与毕业。
-- 假期：一次主要安排与一次人物互动。月份不被跳过，生日和成长仍正常计数。
+- 假期：一次主要安排与一次人物互动。普通互动与假期提供可选练习入口，进入后取代该次原行动，不叠加原收益；未选时不会额外弹出菜单。重要初遇不因此被强制跳过。
 
 events-year2.js 是历史文件名，实际保存高一下事件。高二内容位于 life-events.js。
 
@@ -43,7 +45,7 @@ school-life.js 只保存定义：三个习惯槽、可选习惯、论坛背景�
 
 论坛每月从可用模板确定性选两条，不调用主随机源，因此不会因为展示背景帖改变考试或事件骰点。传闻根据存档真实状态按优先级选择，同一存档中同一条只出现一次，两条传闻至少间隔2个月。传闻回应记录在 choiceHistory；后续最多由两个不同NPC提起，防止每次见面重复同一句话。
 
-论坛和传闻都是单局状态，0.6.0没有服务器、全玩家统计或跨周目图鉴。不要把静态模板描述成真实玩家帖子。
+论坛和传闻都是单局状态，0.6.1没有服务器、全玩家统计或跨周目图鉴。不要把静态模板描述成真实玩家帖子。
 
 share-card.js 从 graduationPortrait 读取最终状态，并在浏览器 Canvas 中生成PNG。图中不存在的内容不得为了排版“补全”；新增毕业字段时应同时更新页面画像、卡片数据测试和绘制逻辑。
 
@@ -107,9 +109,19 @@ run(action, context) 可接管复杂流程。返回 HANDLED 时，子流程负�
 
 固定旧事件的差异效果集中在 LEGACY_FIXED_EFFECTS；路线效果由 routeChoiceEffects 提供。迁移时去掉对应兼容效果，避免结算两次。
 
-成长特质只替换明确标为 replaceable、角色为 social/bold 且未 protected 的选项。没有标记即不替换。原始数组保持不变，替换后的选项不会执行原选项的效果。
+成长特质只替换明确标为 replaceable 且未 protected 的选项。社交使用 social/bold；已接入的普通活动通过 activityDomain、skill 与 replaceChoiceId/replaceIndex 指定真实领域和位置。考试策略与关键决定不参与替换。原数组不变，替换后的选项不执行原效果。
 
-trait-choices.js 定义普通和隐藏选项组，以及 `FUSION_RECIPES`。trait-system.js 为每项常规特质隔离成长状态，记录共同成功人物、风格、高压力表演和失败，并由 `fusionEligibility` 检查配方。接受合成后把来源的 `fusedInto` 指向隐藏结果，避免普通来源和隐藏结果同时竞争注入位置。
+trait-choices.js 定义社交选项、TRAIT_ACTIVITY_SETS 与 FUSION_RECIPES；trait-system.js 为每项常规特质隔离成长，检查月份、人物、场景与行为。六项特质各在跨4/8个月使用后达Lv.2/3，社交与普通活动共用同月上限。
+
+当前只启用古明地恋。各来源至少4个月，两个来源月份并集至少12个月，最早日历索引16；同月两来源不能冒充两个月。合成后 fusedInto 接管来源社交选项，普通活动来源模板和基础作用仍保留。enabledFusionRecipes / activeHiddenTraitNames / hiddenTraitEnabled 统一过滤暂停角色，UI、判定、合成、毕业与调试入口不得绕过开关。
+
+## 普通基础作用与后天形成
+
+traits.js 的 TRAIT_PROFILES 为60项普通特质提供分类与可执行领域/恢复/消耗。trait-benefits.js 分离纯计算 traitActivityModifiers 与实际结算 applyTraitActivityOutcome；正向普通特质修正合计+2封顶，负向另算。月间特质作用只调整精力/压力，各自恢复最多6，不发能力XP；需要支付的额外消耗每项每月首次真实生效时支付。非酋固定-1，真实失败复盘每月最多2次；外貌改为压力恢复，共享额度。预测不扣资源、不发奖励。
+
+trait-formation.js 数据与核心各一份：recordTraitFormationEvidence 只接受 rememberChoice 第6参 formationEvidence 数组和显式稳定ID映射，不按休息、独处、标签或文本猜性格。至少4个不同月份、索引6以后，tryTraitFormation 在月末最多询问一次；接受后S.acquiredTraits增加一项，成长从0开始；暂缓保留证据、无惩罚，3个月后可再问；最多新增2项，不修改原3项开局特质。
+
+buildTraitPracticeEvent 返回标准对象事件，由 runStoryEvent 接回原 action.next。traitFormationSummary 提供可渲染进度；ownedTraitNames 统一枚举开局与后天特质，让基础作用、成长、合成、徽章与毕业保持一致。
 
 ## 判定与存档
 
@@ -117,16 +129,16 @@ trait-choices.js 定义普通和隐藏选项组，以及 `FUSION_RECIPES`。trai
 
 当前仍有旧事件闭包，因此存档保存初始配置、随机状态、已执行按钮ID与最终状态校验。读取时从开局确定性重放，重新建立当前按钮与事件闭包，能恢复选择页、结果页和毕业页。不会把 JSON 内容当代码执行。
 
-存档带 schema 与精确版本号，不兼容的版本拒绝读取；重放失败时恢复当前正常游戏。调试局不保存、不覆盖普通存档。后续若改成直接快照，需先将所有流程位置改成可序列化事件ID。
+存档带 schema 与精确版本号，0.6.1仅接受本版本，使用 fuzhong-girl-v061 独立键，不读取或覆盖旧版本键；重放失败时恢复当前正常游戏。调试局不保存、不覆盖普通存档。后续若改成直接快照，需先将所有流程位置改成可序列化事件ID。
 
 任何改变随机调用次数、ID、效果或状态结构的发布都应升级版本，并决定迁移或明确拒绝旧档，不能沿用版本号却假称兼容。
 
 ## 验证入口
 
 - main.js 的 validateGameData：静态数据检查。
-- npm test：34组规则回归、8条三年流程和中途/毕业存档重放。
+- npm test：规则边界、完整三年路线、自然后天形成与中途/毕业重放；测试数量以运行输出为准。
 - tools/browser-check.js：可选真实浏览器操作、响应布局和下载检查。
 - tools/build-standalone.js：将 CSS/JS 嵌入可独立运行的 HTML。
-- GameDebug.getState / validate / traits / fusions：读取调试信息；check / jump / prepareFusion / setStat 会标记调试局。
+- GameDebug.getState / validate / traits / formation / fusions：读取调试信息；check / jump / prepareFusion / setStat 会标记调试局；prepareFusion拒绝暂停角色。
 
 新增分支应验证实际后果和后续读取，不能仅验证字段写入或文字存在。

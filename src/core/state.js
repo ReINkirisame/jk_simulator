@@ -12,6 +12,7 @@ function freshState(){return {
  birthdayMonth:1,birthdayDay:1,npcs:[],npcRelation:{},
  usedRandom:[],usedRoute:{},history:[],flags:{},exam:{},examDetails:{},
  traitProgress:{},traitJourneys:{},hiddenTraits:[],hiddenTraitSources:{},fusionHistory:[],
+ acquiredTraits:[],traitFormation:{},traitFormationHistory:[],
  traitChoiceState:{misses:0,lastEventId:null,recentChoiceIds:[]},
  tendencies:{},choiceHistory:[],memories:[],checks:[],npcImpressions:{},
  traitMilestones:{months:[],npcs:[],scenes:[]},
@@ -48,8 +49,12 @@ function shuffle(items){
  }
  return result;
 }
+function ownedTraitNames(){
+ const known=new Set(TRAITS.map(item=>item[0]));
+ return [...new Set([...S.traits.map(i=>S.pool[i]?.[0]),...(S.acquiredTraits||[])])].filter(name=>known.has(name));
+}
 function hasTrait(t){
- return S.traits.some(i=>S.pool[i]&&S.pool[i][0]===t)||(Array.isArray(S.hiddenTraits)&&S.hiddenTraits.includes(t));
+ return ownedTraitNames().includes(t)||(typeof activeHiddenTraitNames==="function"&&activeHiddenTraitNames().includes(t));
 }
 function hasInterest(t){return S.interests.includes(t)}
 function hasTag(t){return hasTrait(t)||hasInterest(t)}
@@ -99,12 +104,13 @@ function addTendency(name,amount=1){
  if(!S.tendencies||typeof S.tendencies!=="object")S.tendencies={};
  S.tendencies[name]=(Number(S.tendencies[name])||0)+amount;
 }
-function rememberChoice(eventId,choiceId,label,tags=[],impact=""){
+function rememberChoice(eventId,choiceId,label,tags=[],impact="",formationEvidence=[]){
  if(!Array.isArray(S.choiceHistory))S.choiceHistory=[];
  if(!Array.isArray(S.memories))S.memories=[];
- const record={eventId,choiceId,label,tags:Array.isArray(tags)?[...tags]:[],term:S.term,month:S.month,calendarIndex:S.calendarIndex};
+ const record={eventId,choiceId,label,tags:Array.isArray(tags)?[...tags]:[],formationEvidence:Array.isArray(formationEvidence)?[...formationEvidence]:[],term:S.term,month:S.month,calendarIndex:S.calendarIndex};
  S.choiceHistory.push(record);
  (Array.isArray(tags)?tags:[]).forEach(tag=>addTendency(tag));
+ if(typeof recordTraitFormationEvidence==="function")recordTraitFormationEvidence(record);
  if(impact){
    rememberImpact(eventId,impact);
  }

@@ -1,6 +1,6 @@
 "use strict";
 
-const GAME_VERSION="0.6.0";
+const GAME_VERSION="0.6.1";
 
 /**
  * 开发期的轻量内容检查。
@@ -11,6 +11,8 @@ function validateGameData(){
  const traitNames=TRAITS.map(item=>item[0]);
  const duplicates=traitNames.filter((name,index)=>traitNames.indexOf(name)!==index);
  if(duplicates.length)warnings.push("重复特质："+[...new Set(duplicates)].join("、"));
+ if(traitNames.length!==60||traitNames.some(name=>!TRAIT_PROFILES[name]?.category||!TRAIT_PROFILES[name]?.skill||!traitEffectDescription(name)))warnings.push("普通特质分类或作用说明缺失");
+ if(enabledFusionRecipes().length!==1||enabledFusionRecipes()[0]?.hidden!=="古明地恋")warnings.push("0.6.1仅开放古明地恋");
 
  Object.entries(NPCS).forEach(([name,npc])=>{
    if(!npc||!npc.desc||!npc.tag)warnings.push(`NPC「${name}」缺少描述或标签。`);
@@ -57,7 +59,7 @@ function validateGameData(){
    if(!HABIT_SLOTS[slot]||Object.keys(HABITS[slot]||{}).length<3)warnings.push("生活习惯分类缺失："+slot);
  });
  const rumorIds=RUMOR_DEFS.map(item=>item.id);
- if(RUMOR_DEFS.length!==12)warnings.push("0.6.0应提供12条校园传闻");
+ if(RUMOR_DEFS.length!==12)warnings.push("应提供12条校园传闻");
  if(new Set(rumorIds).size!==rumorIds.length)warnings.push("校园传闻ID重复");
  RUMOR_DEFS.forEach(item=>{
    if(!item.id||typeof item.when!=="function"||!item.title||!item.summary||!item.forum)warnings.push("校园传闻定义不完整："+(item.id||"unknown"));
@@ -91,6 +93,7 @@ globalThis.GameDebug=Object.freeze({
  evolution:chaosEvolutionEligibility,
  fusions:fusionStatus,
  traits:()=>JSON.parse(JSON.stringify(S.traitJourneys)),
+ formation:traitFormationSummary,
  habits:()=>JSON.parse(JSON.stringify(S.habits)),
  rumors:()=>JSON.parse(JSON.stringify(S.rumors)),
  setStat:(key,value)=>{if(ATTRIBUTES[key]&&Number.isInteger(value)&&value>=0&&value<=(key==="appearance"?20:30)){S.debug=true;S.stats[key]=value;update();}}

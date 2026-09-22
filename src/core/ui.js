@@ -40,8 +40,9 @@ function update(){
  $("buffs").innerHTML=[...traitBadges,...interestBadges].map(item=>{
    const cls=item.className?` ${esc(item.className)}`:"";
    const title=item.title?` title="${esc(item.title)}"`:"";
-   return `<span class="buff${cls}"${title}>${esc(item.label)}</span>`;
+  return `<span class="buff${cls}"${title}>${esc(item.label)}</span>`;
  }).join("");
+ renderTraitDetails(traitBadges);
  $("npcList").innerHTML=S.npcs.length?S.npcs.map(n=>{
     const d=NPCS[n],r=getRelation(n);
     const goal=typeof npcGoal==="function"?npcGoal(n):d.tag;
@@ -65,10 +66,42 @@ function update(){
  }
 }
 
+function renderTraitDetails(badges=[]){
+ const detailBox=$("traitDetails"),formationBox=$("traitFormationInfo");
+ const growing=new Set(typeof progressiveTraitNames==="function"?progressiveTraitNames():[]);
+ const owned=typeof ownedTraitNames==="function"?ownedTraitNames():S.traits.map(i=>S.pool[i]?.[0]).filter(Boolean);
+ if(detailBox){
+  const regular=owned.map(name=>{
+   const acquired=(S.acquiredTraits||[]).includes(name);
+   const badge=badges.find(item=>item.label===name||item.label.startsWith(name+" Lv."));
+   const locked=growing.has(name)&&typeof sourceTraitLocked==="function"&&sourceTraitLocked(name);
+   const growth=locked?`已参与【${traitJourney(name).fusedInto}】合成；社交专属选项由隐藏角色接替，其他活动专属行动仍可使用，下面的普通作用与代价保留。`
+    :growing.has(name)?badge?.title||"通过真正使用专属选项成长，同一特质每月最多一次。":"本版不设等级；普通作用一直有效。";
+   return `<article class="trait-detail-item"><div class="trait-detail-heading"><b>${esc(badge?.label||name)}</b><span>${esc(traitCategoryLabel(name))} · ${acquired?"后天形成":"开局选择"}</span></div><p>${esc(traitEffectDescription(name))}</p><small class="trait-growth-note">${esc(growth)}</small></article>`;
+  });
+  const hidden=typeof activeHiddenTraitNames==="function"?activeHiddenTraitNames():[];
+  hidden.forEach(name=>{
+   const sources=S.hiddenTraitSources?.[name]||[];
+   regular.push(`<article class="trait-detail-item hidden-detail"><div class="trait-detail-heading"><b>${esc(name)}</b><span>隐藏角色 · 合成</span></div><p>${esc(HIDDEN_TRAITS[name]?.desc||"")}</p>${sources.length?`<small class="trait-growth-note">来源：${esc(sources.join("＋"))}；社交专属行动由隐藏角色接替。</small>`:""}</article>`);
+  });
+  detailBox.innerHTML=regular.join("")||"<p class=\"notice\">开局选择后，会在这里列出每项特质的实际作用。</p>";
+ }
+ if(formationBox&&typeof traitFormationSummary==="function"){
+  const summary=traitFormationSummary(),unowned=summary.filter(item=>!item.owned);
+  const used=(S.acquiredTraits||[]).length,max=TRAIT_FORMATION_RULES.maxAcquired;
+  const progress=unowned.filter(item=>item.months>0),untried=unowned.filter(item=>!item.months);
+  const rows=items=>items.map(item=>`<div class="trait-formation-row"><div><b>${esc(item.name)}</b><span class="${item.eligible?"formation-ready":""}">${esc(item.status)}</span></div><p>${esc(item.hint)}</p></div>`).join("");
+  formationBox.innerHTML=`<p class="trait-formation-count">后天名额 ${used}/${max}${used>=max?" · 本局不再形成新特质":" · 接受前可以暂缓，不强制定型"}</p>`+
+   (used>=max?"":progress.length?rows(progress):"<p class=\"notice\">还没有未拥有特质的跨月记录。</p>")+
+   (used<max&&untried.length?`<details class="trait-formation-more"><summary>还可以尝试哪些做法 · ${untried.length}项</summary>${rows(untried)}</details>`:"");
+ }
+}
+
 function renderPool(){
  // 0.6.0 起，癫佬不再为了测试被固定塞进候选池；调试入口可以按需注入合成素材。
  S.pool=shuffle(TRAITS).slice(0,10);S.traits=[];
- $("traitPool").innerHTML=S.pool.map((t,i)=>`<button type="button" class="trait" data-i="${i}" aria-pressed="false" onclick="toggleTrait(${i})"><b>${esc(t[0])}</b><span>${esc(t[1])}</span></button>`).join("");
+ const growing=new Set(typeof progressiveTraitNames==="function"?progressiveTraitNames():[]);
+ $("traitPool").innerHTML=S.pool.map((t,i)=>`<button type="button" class="trait" data-i="${i}" aria-pressed="false" onclick="toggleTrait(${i})"><span class="trait-card-heading"><b>${esc(t[0])}</b><small class="trait-type">${esc(traitCategoryLabel(t[0]))}</small></span><span>${esc(t[1])}</span><span class="trait-card-effect">${esc(traitEffectDescription(t[0]))}</span><small class="trait-card-capability ${growing.has(t[0])?"can-grow":""}">${growing.has(t[0])?"可成长 · 有专属选项":"普通作用 · 本版不设等级"}</small></button>`).join("");
 }
 function toggleTrait(i){
  const e=document.querySelector(`[data-i="${i}"]`);
@@ -112,7 +145,11 @@ function showChoices(tag,title,text,choices,next,context={}){
    if(meta.hint)b.title=meta.hint;
    const previewText=typeof meta.preview==="function"?meta.preview():meta.preview;
    if(previewText){const preview=document.createElement("small");preview.className="choice-preview";preview.textContent=previewText;b.appendChild(preview);b.title=[b.title,previewText].filter(Boolean).join("\n");}
-   if(meta.replacedLabel)b.title=`特质改写：本次替代「${meta.replacedLabel}」。不获得原选项的收益。`;
+   if(meta.replacedLabel){
+    const replacement=document.createElement("small");replacement.className="choice-replacement";
+    replacement.textContent=`替代：${meta.replacedLabel} · 不获得原收益`;b.appendChild(replacement);
+    b.title=[b.title,`特质改写：本次替代「${meta.replacedLabel}」。不获得原选项的收益。`].filter(Boolean).join("\n");
+   }
    bindAction(b,`choice:${context.eventId||tag+":"+title}:${meta.choiceId||meta.id||index}`,()=>{
      if(locked)return;
      locked=true;
@@ -166,7 +203,7 @@ function safeNext(next){
    else finishMonth();
 }
 
-function effectSnapshot(){return JSON.parse(JSON.stringify({stats:S.stats,xp:S.growth.xp,resources:S.resources,relations:S.npcRelation,trust:S.npcTrust,memories:S.memories.length,progress:S.project?.progress||0}));}
+function effectSnapshot(){return JSON.parse(JSON.stringify({stats:S.stats,xp:S.growth.xp,resources:S.resources,relations:S.npcRelation,trust:S.npcTrust,memories:S.memories.length,progress:S.project?.progress||0,acquiredTraits:S.acquiredTraits||[]}));}
 function showEffectFeedback(before){
  const items=[];
  const add=(label,delta,negative=delta<0)=>{if(delta)items.push({label:label+formatSigned(delta),negative});};
@@ -177,6 +214,7 @@ function showEffectFeedback(before){
  Object.entries({cash:"零花钱",energy:"精力",stress:"压力"}).forEach(([key,label])=>add(label,S.resources[key]-before.resources[key],key==="stress"?S.resources[key]>before.resources[key]:S.resources[key]<before.resources[key]));
  S.npcs.forEach(name=>{add(name+"关系",getRelation(name)-(before.relations[name]??1));add(name+"信任",(S.npcTrust[name]||0)-(before.trust[name]||0));});
  add("项目进展",(S.project?.progress||0)-before.progress);
+ (S.acquiredTraits||[]).filter(name=>!(before.acquiredTraits||[]).includes(name)).forEach(name=>items.push({label:"形成特质 · "+name,negative:false}));
  if(S.memories.length>before.memories)items.push({label:"已留下后续记忆",negative:false});
  $("effectFeedback").innerHTML=items.map(item=>`<span class="effect-chip${item.negative?" negative":""}">${esc(item.label)}</span>`).join("");
 }

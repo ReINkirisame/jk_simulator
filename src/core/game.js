@@ -50,15 +50,16 @@ function runFixedMonth(i,done){
  const e=list[i];
  if(typeof e.condition==="function"&&!e.condition()){runFixedMonth(i+1,done);return;}
  const eventId=e.id||`fixed:${S.term}:${S.month}:${i}`;
+ const context={eventId,...activityEventContext(e)};
  const rawChoices=typeof e.getChoices==="function"?e.getChoices():e.choices;
  const choices=(Array.isArray(rawChoices)?rawChoices:[]).map((choice,index)=>{
    const meta=choice&&choice[3]&&typeof choice[3]==="object"?choice[3]:{};
    const legacyEffects=LEGACY_FIXED_EFFECTS[e.title]?.[index]||[];
    const examKind=typeof examKindForEvent==="function"?examKindForEvent(eventId,e.title):null;
-   const enhancedMeta={...meta,preview:meta.preview||(examKind&&["steady","risk","preserve"].includes(meta.id)?()=>examForecastText(examKind,meta.id):choiceEffectPreview(legacyEffects))};
+   const enhancedMeta={...meta,role:meta.role||(context.replaceIndex===index?context.activityDomain:"safe"),replaceable:context.replaceIndex===index&&!meta.protected,preview:meta.preview||(examKind&&["steady","risk","preserve"].includes(meta.id)?()=>examForecastText(examKind,meta.id):choiceEffectPreview(legacyEffects))};
    const effect=choice&&choice[2];
    return [choice[0],choice[1],action=>{
-     rememberChoice(eventId,meta.id||`choice-${index+1}`,choice[0],meta.tags||[]);
+     rememberChoice(eventId,meta.id||`choice-${index+1}`,choice[0],meta.tags||[],"",meta.formationEvidence||[]);
      applyEffects(legacyEffects);
      const result=typeof effect==="function"?effect(action):undefined;
      const impact=typeof meta.impact==="function"?meta.impact():meta.impact||"";
@@ -68,7 +69,7 @@ function runFixedMonth(i,done){
  });
  const seenKey=`fixedSeen:${S.term}:${S.month}:${eventId}`;
  if(!S.flags[seenKey]){S.flags[seenKey]=true;S.history.push("固定："+e.title);}
- showChoices("固定事件 · "+S.month+"月",e.title,e.text,choices,()=>runFixedMonth(i+1,done),{eventId});
+ showChoices("固定事件 · "+S.month+"月",e.title,e.text,choices,()=>runFixedMonth(i+1,done),context);
 }
 function currentRoute(){return S.route}
 function runBirthday(done){
@@ -93,7 +94,7 @@ function showChaosAftermath(name,done){
    [
      ["承认上次确实有点过头","你决定把话说清楚。",()=>{
        aftermath.pending=false;
-       const check=resolveCheck({stat:"expression",statLabel:"表达",difficulty:7,label:"化解尴尬"});
+       const check=activityCheck("expression","化解尴尬",7,[],null,{activityDomain:"social",npc:name});
        const delta=check.grade==="failure"?-1:check.grade==="setback"?0:1;
        if(delta)changeRelation(name,delta,"处理上次的尴尬");
        return `${check.grade==="failure"?`${name}觉得这段解释比原来的事情还难接。`:check.grade==="setback"?`${name}接受了你的解释，但暂时没有继续这个话题。`:`${name}终于笑了一下，并说她其实只是当时没反应过来。`}\n\n${formatCheck(check)}`;
@@ -144,10 +145,7 @@ function tagEffect(t,mode="habit"){
  }
 }
 function traitSkill(t){
- if(["认真","卷王","天生卷王","手账少女","天赋","键政","中庸之道"].includes(t))return "academic";
- if(["运动少女","舞萌","电竞选手","好胜心"].includes(t))return "fitness";
- if(["文艺b","文学少女","漫画家","摄影爱好者","吉他手","coser","动画区up主","小博主"].includes(t))return "creativity";
- return "expression";
+ return TRAIT_PROFILES[t]?.skill||"expression";
 }
 function traitEvent(t){
  const title=tagTitles[t]||(t+"的一天");
@@ -166,7 +164,7 @@ function traitEvent(t){
 
 function pickRandomEvent(){
  let candidates=RANDOM_EVENTS.filter(e=>!S.usedRandom.includes(e.key)&&!(e.key==="home168"));
- const traitNames=S.traits.map(i=>S.pool[i][0]).filter(t=>!S.usedRandom.includes("trait:"+t));
+ const traitNames=ownedTraitNames().filter(t=>!S.usedRandom.includes("trait:"+t));
  if(traitNames.length&&gameRandom()<0.55)candidates.push(...traitNames.map(t=>traitEvent(t)));
  if(S.family==="wealthy"&&hasTrait("大小姐")&&!S.flags.home168Done&&gameRandom()<0.12){
    const h=RANDOM_EVENTS.find(e=>e.key==="home168");S.flags.home168Done=true;return h;
@@ -178,8 +176,8 @@ function pickRandomEvent(){
 function examTraitEffects(){
  let check=0,score=0;
  const labels=[];
- if(hasTrait("认真")){check+=1;score+=4;labels.push("认真");}
- if(hasTrait("卷王")||hasTrait("天生卷王")){check+=1;score+=5;labels.push("卷王");}
+ if(hasTrait("认真")){score+=4;labels.push("认真");}
+ if(hasTrait("卷王")||hasTrait("天生卷王")){score+=5;labels.push("卷王");}
  if(hasTrait("完美主义")){score+=3;labels.push("完美主义");}
  return {check,score,label:labels.length?labels.join("、"):"无"};
 }
@@ -207,7 +205,7 @@ function calculateExam(name,kind,strategyId,momentId,dice=null){
    difficulty:7,
    modifiers:[
      {label:strategy.label,value:strategy.check},
-     {label:"特质",value:trait.check},
+     ...traitActivityModifiers("academic","exam"),
      {label:"状态",value:healthCheck},
     {label:"稳妥倾向",value:preparation},
     {label:habit.label,value:habit.check},
@@ -228,6 +226,7 @@ function calculateExam(name,kind,strategyId,momentId,dice=null){
  if(strategyId==="preserve"){changeResource("energy",6,"考试中保住了状态");changeResource("stress",-4);}
  else {changeResource("energy",strategyId==="risk"?-10:-5);changeResource("stress",strategyId==="risk"?6:2);}
  S.flags.examPreparation=0;
+ applyTraitActivityOutcome(check,"academic","exam");
  return {name,kind,strategyId,momentId,score:total,check,parts:{base,academicValue,academicScore,preparationScore,healthScore,traitScore:trait.score,habitScore:habit.score,strategyScore,momentScore,performance},traitLabel:trait.label,habitLabel:habit.label};
 }
 
@@ -328,16 +327,7 @@ function studentCouncilChoice(mode){
 }
 
 function studentCouncilResult(){
- const check=resolveCheck({
-   statValue:(S.stats.expression*3+S.stats.academic)/4,
-   statLabel:"综合表现",
-   difficulty:8,
-   modifiers:[
-     {label:"认真",value:hasTrait("认真")?1:0},
-     {label:"社交特质",value:hasTrait("开朗")||hasTrait("社交悍匪")?1:0}
-   ],
-   label:"学生会招新"
- });
+ const check=activityCheck("expression","学生会招新",8,[],null,{activityDomain:"social",domains:["project"],npc:"班长",statValue:(S.stats.expression*3+S.stats.academic)/4,statLabel:"综合表现"});
  ensureNpc("班长",1);
  if(check.grade==="great"){
    S.flags.studentCouncilStatus="正式干事";changeRelation("班长",2,"一起负责学生会工作");
@@ -357,14 +347,10 @@ function studentCouncilResult(){
 
 function nationalDayWithNpc(name){
  const aftermath=S.flags[`chaosAftermath:${name}`];
- const check=resolveCheck({
-   stat:"expression",statLabel:"表达",difficulty:7,
-   modifiers:[
+ const check=activityCheck("expression","国庆出游",7,[
      {label:"已经熟悉",value:getRelation(name)>=3?1:0},
      {label:"上次的尴尬",value:aftermath&&aftermath.pending?-1:0}
-   ],
-   label:"国庆出游"
- });
+   ],null,{activityDomain:"social",npc:name});
  const delta={failure:-1,setback:0,success:1,great:2}[check.grade];
  if(delta)changeRelation(name,delta,"国庆一起出门");
  if(aftermath)aftermath.pending=false;
@@ -420,10 +406,7 @@ function chooseDivisionIntent(value){
 
 function enterCompetition(){
  const qualified=S.stats.academic>=16||hasTrait("天赋")||hasTrait("卷王")||hasTrait("天生卷王");
- const check=resolveCheck({stat:"academic",statLabel:"学力",difficulty:8,modifiers:[
-   {label:"天赋",value:hasTrait("天赋")?1:0},
-   {label:"投入习惯",value:hasTrait("卷王")||hasTrait("天生卷王")?1:0}
- ],label:"竞赛招新"});
+ const check=activityCheck("academic","竞赛招新",8,[],null,{activityDomain:"competition",domains:["study"]});
  if(qualified||check.grade==="success"||check.grade==="great"){
    S.route="竞赛生";S.flags.competitionEntry=qualified?"达到门槛":"试训发挥出色";log("路线确定：竞赛生");
    return `老师把你的名字写进训练名单。随机判定影响的是第一次试训表现，而不是把已经达到的能力门槛重新抽签。\n\n${formatCheck(check)}`;
@@ -447,7 +430,7 @@ function fixedObserve(){addTendency("观察");changeResource("stress",-3,"留在
 function competitionResult(){gainExperience("academic",1,"旁听竞赛");addTendency("探索");return S.stats.academic>=16||hasTrait("天赋")?"你能跟上不少推导，已经可以考虑正式训练。":"你记下了还看不懂的地方。旁听资格一直在，下一次可以带着具体的问题来。";}
 function artResult(){gainExperience("creativity",2,"旁听画室训练");addInterest("美术旁听");return "老师让你保留今天的练习，下次拿它和新稿比较。艺术训练从具体的线条开始，不由外貌或人缘决定。";}
 function enterArt(){
- const check=activityCheck("creativity","美术试训",8,[{label:"兴趣基础",value:hasTag("美术")||hasTrait("漫画家")?1:0}]);
+ const check=activityCheck("creativity","美术试训",8,[{label:"兴趣基础",value:hasInterest("美术")?1:0}]);
  gainExperience("creativity",2,"限时素描");
  if(S.stats.creativity>=16||check.margin>=0){S.route="美术生";rememberImpact("art-entry","进入美术生训练");return "老师留下了你的测试画，把名字写进训练名单。\n\n"+formatCheck(check);}
  addInterest("美术旁听");S.flags.artTrial=true;
@@ -455,7 +438,7 @@ function enterArt(){
 }
 function talentResult(){
  addTendency("表达");gainExperience("expression",2,"完成公开表达");
- const check=activityCheck("expression","公开表演",8,[{label:"创作准备",value:S.stats.creativity>=12?1:0}]);
+ const check=activityCheck("expression","公开表演",8,[{label:"创作准备",value:S.stats.creativity>=12?1:0}],null,{activityDomain:"performance"});
  changeResource("energy",-5);
  if(check.margin>=0){S.flags.stageCredit=(S.flags.stageCredit||0)+1;changeResource("stress",-3);}
  else {S.flags.stageRetry=true;changeResource("stress",3);}
@@ -505,12 +488,13 @@ function clubWeek(next){
  };
  const scene=scenes[club]||scenes["归宅部"];
  const stat=clubSkill(club);
+ const domain=club==="音乐社"?"music":["话剧社","街舞社","广播站"].includes(club)?"performance":club==="篮球社"?"competition":club==="辩论社"?"study":"creation";
  const choices=scene[1].map((c,index)=>[c[0],c[1],()=>{
   gainExperience(index===0?stat:"expression",2,"社团活动周");changeResource("energy",index===0?-7:-3);
   if(index===0)S.flags.clubCommitment=(S.flags.clubCommitment||0)+1;else changeResource("stress",-3);
   return typeof c[2]==="function"?c[2]():c[1];
- },{id:`club-${index}`,preview:index===0?`精力-7 · ${ATTRIBUTES[stat].label}经验+2`:`精力-3 · 压力-3 · 表达经验+2`}]);
- showChoices("固定事件 · 5月","社团活动周 · "+club,scene[0],choices,typeof next==="function"?next:()=>{});
+ },{id:`club-${index}`,role:index===0?domain:"safe",replaceable:index===0&&club!=="归宅部",protected:index!==0,preview:index===0?`精力-7 · ${ATTRIBUTES[stat].label}经验+2`:`精力-3 · 压力-3 · 表达经验+2`}]);
+ showChoices("固定事件 · 5月","社团活动周 · "+club,scene[0],choices,typeof next==="function"?next:()=>{},{eventId:"club-week:"+club,allowTraitChoices:!["归宅部","志愿者协会"].includes(club),activityDomain:domain,skill:stat,sceneCategory:"club",musicAllowed:club==="音乐社"});
  return "HANDLED";
 }
 
@@ -563,7 +547,7 @@ function runRandom(slot,done){
         rememberChoice(`meet:${name}`,choice.id,choice.label,choice.tags||[],`第一次真正认识了${name}`);
         return choice.result;
       },
-      {id:choice.id,role:index===0?"bold":"social",replaceable:true,preview:[choice.energy?`精力${formatSigned(choice.energy)}`:"",choice.stress?`压力${formatSigned(choice.stress)}`:"",`关系约 +${choice.relation||1}${choice.trust?` · 信任+${choice.trust}`:""}`].filter(Boolean).join(" · ")}
+      {id:choice.id,role:index===0?"bold":"safe",replaceable:index===0,protected:index!==0,preview:[choice.energy?`精力${formatSigned(choice.energy)}`:"",choice.stress?`压力${formatSigned(choice.stress)}`:"",`关系约 +${choice.relation||1}${choice.trust?` · 信任+${choice.trust}`:""}`].filter(Boolean).join(" · ")}
     ]);
 
     showChoices(

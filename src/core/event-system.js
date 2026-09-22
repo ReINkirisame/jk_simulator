@@ -18,7 +18,7 @@ function applyEffects(effects=[],context={}){
   }
  }
 }
-function activityCheck(stat,label,difficulty=7,modifiers=[],dice=null){
+function activityCheck(stat,label,difficulty=7,modifiers=[],dice=null,context={}){
  const mood=stat==="appearance"?[
   {label:"当月仪容",value:S.flags.groomingMonth===monthKey()?S.flags.grooming||0:0}
  ]:[
@@ -28,7 +28,10 @@ function activityCheck(stat,label,difficulty=7,modifiers=[],dice=null){
   {label:"压力过高",value:S.resources.stress>=70?-1:0},
   {label:"压力临界",value:S.resources.stress>=90?-1:0}
  ];
- return resolveCheck({stat,label,difficulty,modifiers:[...mood,...modifiers],dice});
+ const domain=context.activityDomain;
+ const result=resolveCheck({stat,statValue:context.statValue??null,statLabel:context.statLabel??null,label,difficulty,modifiers:[...mood,...modifiers,...traitActivityModifiers(stat,domain,context)],dice});
+ if(!context.deferTraitOutcome)applyTraitActivityOutcome(result,stat,domain,context);
+ return result;
 }
 function choiceEffectPreview(effects=[],cost=0){
  const totals={cash:cost?-cost:0,energy:0,stress:0};
@@ -37,9 +40,23 @@ function choiceEffectPreview(effects=[],cost=0){
  }
  return Object.entries(totals).filter(([,value])=>value).map(([key,value])=>`${{cash:"零花钱",energy:"精力",stress:"压力"}[key]}${formatSigned(value)}`).join(" · ");
 }
+// 逐项开放普通活动，不按关键词猜测；考试、路线入口与项目交付保持原决定。
+function activityEventContext(event){
+ const fixed={
+  "期末复习":["study","academic"],"才俊杯":["performance","expression"],
+  "班级新年联欢会":["performance","expression"],"语文课话剧排练演出":["performance","expression"],
+  "年级篮球比赛":["competition","fitness"],"科技节":["creation","creativity"]
+ }[event.title];
+ if(fixed)return {allowTraitChoices:true,activityDomain:fixed[0],skill:fixed[1],sceneCategory:fixed[0],replaceIndex:0,musicAllowed:["才俊杯","班级新年联欢会"].includes(event.title)};
+ const projectSlots={"y2-plan":"core","y2-poster":"design","y2-prototype":"polish","y2-repair":"repair"};
+ if(projectSlots[event.id]&&S.project)return {allowTraitChoices:true,activityDomain:"project",skill:event.id==="y2-poster"?"creativity":S.project.skill,sceneCategory:"project",projectId:S.project.id,npc:S.project.partner,replaceChoiceId:projectSlots[event.id]};
+ if(event.id==="y3-callback")return {allowTraitChoices:true,activityDomain:"creation",skill:"creativity",sceneCategory:"creation",replaceChoiceId:"repair",musicAllowed:false};
+ if(event.id==="y3-plan-again")return {allowTraitChoices:true,activityDomain:"study",skill:"academic",sceneCategory:"study",replaceChoiceId:"focus"};
+ return {};
+}
 function runStoryEvent(event,done){
  if(event.condition&&!event.condition()){done();return;}
- const context={eventId:event.id,...(typeof event.context==="function"?event.context():event.context||{})};
+ const context={eventId:event.id,...activityEventContext(event),...(typeof event.context==="function"?event.context():event.context||{})};
  const choices=(typeof event.choices==="function"?event.choices():event.choices).filter(choice=>!choice.condition||choice.condition());
  const list=choices.map(choice=>{
   const disabled=Boolean(choice.cost&&S.resources.cash<choice.cost);
@@ -48,20 +65,20 @@ function runStoryEvent(event,done){
   const inferredPreview=examKind&&["steady","risk","preserve"].includes(choice.id)?examForecastText(examKind,choice.id):"";
   return [label,choice.text||"",action=>{
    if(choice.cost&&!spendCash(choice.cost,"活动开销"))return "零花钱不够。这次没有支付费用，也没有获得付费效果。";
-   rememberChoice(event.id,choice.id,choice.label,choice.tags||[]);
+   rememberChoice(event.id,choice.id,choice.label,choice.tags||[],"",choice.formationEvidence||[]);
    applyEffects(choice.effects||[],context);
    let result=typeof choice.text==="function"?choice.text():choice.text||"";
    if(choice.run){const value=choice.run(action,context);if(value==="HANDLED")return value;if(typeof value==="string")result=value;}
    if(choice.check){
     const c=choice.check;
-    const check=activityCheck(c.stat,c.label||event.title,c.difficulty||7,typeof c.modifiers==="function"?c.modifiers():c.modifiers||[]);
+    const check=activityCheck(c.stat,c.label||event.title,c.difficulty||7,typeof c.modifiers==="function"?c.modifiers():c.modifiers||[],null,context);
     const outcome=choice.outcomes?.[check.grade]||choice.outcomes?.[check.margin>=0?"success":"failure"];
     if(outcome){applyEffects(outcome.effects||[],context);result=typeof outcome.text==="function"?outcome.text(check):outcome.text;}
     result+="\n\n"+formatCheck(check);
    }
    if(choice.impact)rememberImpact(event.id,typeof choice.impact==="function"?choice.impact():choice.impact);
    return result;
-  },{id:choice.id,role:choice.role||"safe",replaceable:choice.replaceable===true,protected:choice.protected===true,disabled,hint:choice.hint||"",preview:(typeof choice.preview==="function"?choice.preview():choice.preview)||inferredPreview||choiceEffectPreview(choice.effects||[],choice.cost||0)}];
+  },{id:choice.id,role:choice.role||(context.replaceChoiceId===choice.id?context.activityDomain:"safe"),replaceable:choice.replaceable===true||context.replaceChoiceId===choice.id,protected:choice.protected===true,disabled,hint:choice.hint||"",preview:(typeof choice.preview==="function"?choice.preview():choice.preview)||inferredPreview||choiceEffectPreview(choice.effects||[],choice.cost||0)}];
  });
  S.history.push(event.title);
  showChoices(event.tag||"校园生活",event.title,typeof event.text==="function"?event.text():event.text,list,done,context);

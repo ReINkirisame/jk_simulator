@@ -57,7 +57,7 @@ function createNpcScene(name){
  return {id:context.eventId,title:name+" · "+scene[0],tag:"人物互动 · "+places[category],text:scene[1]+previous+rumor,context,choices:[
   {id:"help",label:scene[2]+" · "+ATTRIBUTES[arc.skill].label,role:"social",replaceable:true,preview:"精力-4 · 判定成功时关系+2、信任+1",
    run:()=>{
-    const check=activityCheck(arc.skill,scene[0],7,[{label:"相处中的信任",value:(S.npcTrust[name]||0)>=4?1:0}]);
+    const check=activityCheck(arc.skill,scene[0],7,[{label:"相处中的信任",value:(S.npcTrust[name]||0)>=4?1:0}],null,{...context,activityDomain:"social"});
     gainExperience(arc.skill,1,"一起处理具体的事");changeResource("energy",-4);
     const good=check.margin>=0;changeRelation(name,good?2:1,"一起相处");
     if(good){changeTrust(name,1,"帮上了实际的忙");S.flags["npcHelp:"+name]=supported+1;}
@@ -68,8 +68,14 @@ function createNpcScene(name){
    text:"你没有把谈话变成一场能力展示。她慢慢说完，发现不必把一切整理成漂亮的答案。",effects:[FX.relation(name,1),FX.trust(name,1),FX.resource("energy",-2)],
    run:()=>{S.flags["npcListened:"+name]=(S.flags["npcListened:"+name]||0)+1;if(S.year===3)S.flags["npcEnding:"+name]="认真听完";}},
   {id:"boundary",label:"今天有点累，约好下次再认真聊",role:"withdraw",protected:true,
-   text:"你说明了自己现在没有足够精力。她没有立刻变得更亲近，但也不用猜测你为什么心不在焉。",effects:[FX.resource("energy",6),FX.resource("stress",-3)]}
+   text:"你说明了自己现在没有足够精力。她没有立刻变得更亲近，但也不用猜测你为什么心不在焉。",effects:[FX.resource("energy",6),FX.resource("stress",-3)]},
+  traitPracticeEntry("先约下次聊，用这段时间试一种自己的做法")
  ]};
+}
+function traitPracticeEntry(label="试一种自己的做法 · 可选"){
+ return {id:"try-practice",label,protected:true,condition:()=>S.acquiredTraits.length<TRAIT_FORMATION_RULES.maxAcquired,
+  preview:"改做个人练习，不获得原互动或假期行动收益；进入后再选具体做法",
+  run:action=>{runStoryEvent(buildTraitPracticeEvent(),action.next);return "HANDLED";}};
 }
 function beginCalendarMonth(){
  const key=monthKey();if(S.flags["monthStarted:"+key])return;
@@ -87,6 +93,7 @@ function beginCalendarMonth(){
   changeResource("energy",-4,"维持日常课程");
  }
  applyHabitEffects();
+ applyMonthlyTraitBenefits();
  createForumMonthPosts();
  if(S.year===3&&S.flags.seniorPriority){
   const priority=S.flags.seniorPriority;
@@ -144,6 +151,7 @@ function startCalendarMonth(){
 function runSeniorRemainder(){runBirthday(()=>npcInteraction(nextSocialNpc(),finishMonth));}
 function advanceCalendar(){S.calendarIndex+=1;startCalendarMonth();}
 function finishCalendarMonth(){
+ if(tryTraitFormation(finishCalendarMonth))return;
  if(tryTraitFusion(finishCalendarMonth))return;
  if(tryCampusRumor(finishCalendarMonth))return;
  if(S.year===3&&S.month===6){graduationBond(showGraduation);return;}
@@ -176,6 +184,7 @@ function holidayEvent(){
   {id:"rest",label:"认真休息，留一点闲暇 · 恢复精力",text:"有些天没有特别值得写的事情。睡够以后，你才发现之前一直紧绷着。",effects:[FX.resource("energy",20),FX.resource("stress",-12)]}
  ];
  if(S.year===2&&S.project&&!S.project.result)choices.push({id:"project",label:"约伙伴把项目再做一段",run:()=>workOnProject("holiday"),impact:"寒假也给共同项目留了时间"});
+ choices.push(traitPracticeEntry());
  return {id:"holiday:"+S.year+":"+S.month,title,tag:S.term,text:routeNote+"\n\n你只选一件主要的事。学力、创造和体能不会因为放假就自动增长；外貌也不会被普通练习改变。",choices};
 }
 function runHolidayMonth(){
@@ -198,7 +207,7 @@ function workOnProject(mode){
   {label:"已经形成的信任",value:(S.npcTrust[p.partner]||0)>=4?1:0},
   {label:"早期校园经验",value:(p.skill==="academic"&&S.flags.sciencePractice)||(p.skill==="creativity"&&S.flags.lanternStyle==="creative")||(stat==="expression"&&S.flags.studentCouncilStatus==="正式干事")?1:0},
   ...habitProjectModifiers()
- ]);
+ ],null,{activityDomain:"project",npc:p.partner,projectId:p.id});
  gainExperience(stat,2,"持续做项目");changeResource("energy",mode==="polish"?-10:-7);
  const amount=check.grade==="great"?3:check.margin>=0?2:1;p.progress+=amount;
  if(check.margin>=0){changeTrust(p.partner,1,"一起完成了具体工作");changeResource("stress",-2);}
@@ -211,7 +220,7 @@ function presentProject(stat){
   {label:"累计准备",value:S.project.progress>=10?2:S.project.progress>=6?1:0},
   {label:"实际测试过",value:S.flags.testedPrototype?1:0},
   ...habitProjectModifiers()
- ]);
+ ],null,{activityDomain:"performance",domains:["project"],npc:S.project.partner,projectId:S.project.id});
  changeResource("energy",-8);gainExperience(stat,2,"展示共同成果");
  if(check.margin>=0){S.project.progress+=2;S.flags.projectPresented="公开展示";changeResource("stress",-5);}
  else {S.project.progress+=1;S.flags.projectPresented="现场补救";changeResource("stress",5);}
@@ -270,7 +279,7 @@ function graduationPortrait(){
  const growth=Object.keys(ATTRIBUTES).map(key=>ATTRIBUTES[key].label+" "+S.initialStats[key]+" → "+S.stats[key]).join(" · ");
  const academic=score>=590?"你在学业上留下了很强的积累，下一阶段可以认真选择更有挑战的方向。":score>=500?"你带着比较稳固的学业基础离开校园，也知道自己接下来还想尝试什么。":score>=430?"你的成绩里有兑现的部分，也有没能补上的短板。之后仍有不同的学校和路径可以继续探索。":"学业没有成为这三年最顺利的部分。你需要重新安排下一阶段的路径，但这张成绩单不能抹去其余经历。";
  const bond=S.flags.bond?S.flags.bond.name+"："+S.flags.bond.kind:"你保留了几段尚未写完的联系。";
- const hiddenNames=S.hiddenTraits||[];
+ const hiddenNames=activeHiddenTraitNames();
  const legend=hiddenNames.length
   ?`你合成了${hiddenNames.map(name=>"【"+name+"】").join("、")}。这些角色型特质来自真实使用过的两种习惯，而不是开局直接抽到的称号。`
   :hasTrait("癫佬")?"你把不少普通场面当成了战场。有些决斗被接住，有些也确实伤过关系；它还没有和另一种特质合成新的角色画像。":"你没有合成角色型隐藏特质，却仍留下了自己的行事方式。";
@@ -281,7 +290,7 @@ function graduationPortrait(){
  const routine=S.habits&&S.habits.configured?HABIT_SLOT_ORDER.map(slot=>HABIT_SLOTS[slot].label+"“"+habitDefinition(slot,S.habits[slot]).label+"”").join(" · "):"尚未形成稳定的生活习惯";
  const unfinished=S.project&&S.project.result!=="完整交付"?"有些项目设想被留在了未完成版本里。":S.resources.stress>=70?"你离校时仍没有真正松下来。":relationships.length<2?"还有一些关系停在刚刚认识的位置。":"并不是每一件事都需要在毕业前得到答案。";
  const first=S.project&&S.project.result==="完整交付"?"她没有把每一件事都做好，但确实把"+S.project.name+"交到了别人手里。":rumorTitles.length?"她没有成为大家描述中的全部样子，校园里却已经留下了关于她的"+rumorTitles.length+"种说法。":score>=590?"成绩单记住了她稳定的一部分，另外那些生活不会写在分数里。":"她没有成为所有人预先想象的那种优秀学生。";
- const hiddenClosing={"古明地恋":"但那些曾经需要解释的决斗和电波，最后真的成了几个人共同的语言。","后藤独":"而那些当面说不出的句子，最后还是沿着琴弦抵达了愿意听的人。","雪之下雪乃":"她依然相信正确，却终于学会让帮助保留边界，也给关系留下位置。"};
+ const hiddenClosing={"古明地恋":"但那些曾经需要解释的决斗和电波，最后真的成了几个人共同的语言。"};
  const second=S.flags.bond?"毕业以后，"+S.flags.bond.name+"仍然知道该去哪里找到她。":S.flags.projectPassedOn?"而高二留下的经验，还会在她离开以后继续被下一届使用。":hiddenNames.length?(hiddenClosing[hiddenNames[0]]||"那种由两段习惯合成的新样子，也会和她一起离开校园。") :"她带走了尚未完成的部分，也带走了重新开始的能力。";
  return {title:ending,score,academic,growth,bond,legend,project,routine,relationships,rumors:rumorTitles,unfinished,closing:first+"\n"+second,
   state:S.resources.stress>=70?"离开校园时，你仍然绷得很紧。下一段生活里，休息也是需要认真安排的事。":S.resources.energy<25?"最后一段时间耗掉了不少精力。终于不用赶进度时，你想先睡个好觉。":"你没有把最后一点精力都交出去。毕业之后，还有余力去看看新的地方。",
@@ -320,13 +329,13 @@ function debugPutTraits(names){
  S.traits=chosen.slice(0,3);
 }
 function debugPrepareFusion(hidden="古明地恋"){
- const recipe=FUSION_RECIPES.find(item=>item.hidden===hidden||item.id===hidden);if(!recipe)return false;
+ const recipe=enabledFusionRecipes().find(item=>item.hidden===hidden||item.id===hidden);if(!recipe)return false;
  S.debug=true;debugPutTraits(recipe.sources);
  const people=["班长","同人女","体育生","中二病"];
  recipe.sources.forEach((name,index)=>{
   const journey=traitJourney(name);
   journey.xp=Math.max(recipe.minEach,Math.ceil(recipe.totalXp/2));
-  journey.months=CALENDAR.slice(0,journey.xp).map(point=>point.year+":"+point.month);
+  journey.months=CALENDAR.slice(0,journey.xp*2).filter((point,monthIndex)=>monthIndex%2===index).map(point=>point.year+":"+point.month);
   journey.npcs=people.slice(0,Math.max(2,recipe.minNpcs));journey.scenes=["classroom","club","holiday"].slice(0,recipe.minScenes);
   journey.positiveNpcs=["班长","同人女"];journey.styles[index?"performance":"direct-help"]=1;
   if(recipe.needsHighStress)journey.highStressUses=1;

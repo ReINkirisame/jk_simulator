@@ -43,7 +43,7 @@ function resolveCheck({
  (Array.isArray(modifiers)?modifiers:[]).forEach(item=>{
    if(!item)return;
    const value=Number(item.value)||0;
-   if(value)normalized.push({label:item.label||"修正",value});
+   if(value)normalized.push({label:item.label||"修正",value,...(item.traitNames?{traitNames:[...item.traitNames]}:{})});
  });
  const roll=rolled[0]+rolled[1];
  const modifierTotal=normalized.reduce((sum,item)=>sum+item.value,0);
