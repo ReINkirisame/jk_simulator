@@ -16,12 +16,12 @@ function traitSystemState(){
 function traitJourney(name){
  traitSystemState();
  if(!S.traitJourneys[name]||typeof S.traitJourneys[name]!=="object"){
-  S.traitJourneys[name]={xp:0,uses:0,failures:0,months:[],npcs:[],scenes:[],positiveNpcs:[],styles:{},highStressUses:0,fusedInto:null};
+  S.traitJourneys[name]={xp:0,uses:0,failures:0,months:[],npcs:[],scenes:[],positiveNpcs:[],styles:{},fusedInto:null};
  }
  const journey=S.traitJourneys[name];
  for(const key of ["months","npcs","scenes","positiveNpcs"])if(!Array.isArray(journey[key]))journey[key]=[];
  if(!journey.styles||typeof journey.styles!=="object")journey.styles={};
- for(const key of ["xp","uses","failures","highStressUses"])journey[key]=Math.max(0,Number(journey[key])||0);
+ for(const key of ["xp","uses","failures"])journey[key]=Math.max(0,Number(journey[key])||0);
  const legacy=Math.max(0,Number(S.traitProgress[name])||0);
  if(legacy>journey.xp)journey.xp=legacy;
  S.traitProgress[name]=journey.xp;
@@ -126,8 +126,6 @@ function traitReactionText(name,npcName,grade){
   "完美主义":`${npcName}听见的只剩挑错。方案更清楚了，你们之间的距离却被标准推远。`,
   "冰山":`过短的回答被当成了拒绝。等你意识到时，${npcName}已经收回了后面的话。`,
   "古明地恋":`这一次没人接住被你砍掉的前因。${npcName}退回普通对话，气氛还是停顿了一会儿。`,
-  "后藤独":`旋律没有把意思完整带出去。舞台没有替你消除紧张，只把那份慌乱也放大了。`,
-  "雪之下雪乃":`你的判断是对的，语气却让${npcName}觉得自己也成了待修正的问题。`
  };
  if(grade==="failure")return failure[name]||`${npcName}没有接住这次表达，关系因此受到了影响。`;
  if(grade==="setback")return `${npcName}没有完全跟上，却愿意把这段对话留到下一次。事情没有变好，也没有被一次选择彻底毁掉。`;
@@ -154,7 +152,6 @@ function recordTraitUse(name,context={},check={grade:"success"},template={style:
  if(["success","great"].includes(check.grade)&&NPCS[npc]&&!journey.positiveNpcs.includes(npc))journey.positiveNpcs.push(npc);
  if(check.grade==="failure")journey.failures+=1;
  journey.styles[style]=(journey.styles[style]||0)+1;
- if(style==="performance"&&S.resources.stress>=55)journey.highStressUses+=1;
  if(!HIDDEN_TRAITS[name]){
   const key=monthKey();
   if(!journey.months.includes(key)){
@@ -301,12 +298,6 @@ function fusionEligibility(id){
   distinctMonths:months.length>=(recipe.minDistinctMonths||0),
   peopleEnough:people.length>=recipe.minNpcs,scenesEnough:scenes.length>=recipe.minScenes,
   sharedEnough:!recipe.sharedPositive||shared.length>0,
-  performance:!recipe.needsPerformance||journeys.some(journey=>(journey.styles.performance||0)>0),
-  highStress:!recipe.needsHighStress||journeys.some(journey=>journey.highStressUses>0),
-  trusted:!recipe.needsTrusted||shared.some(name=>(S.npcTrust[name]||0)>=2||getRelation(name)>=4),
-  academic:!recipe.needsAcademic||S.stats.academic>=recipe.needsAcademic,
-  directHelp:!recipe.needsDirectHelp||journeys.some(journey=>(journey.styles["direct-help"]||0)>0),
-  friction:!recipe.needsFriction||journeys.some(journey=>journey.failures>0)||people.some(name=>getRelation(name)<=0),
   waiting:S.calendarIndex<(Number(S.flags[`fusionDeferredUntil:${recipe.id}`])||0)
  };
  return {id:recipe.id,hidden:recipe.hidden,sources:recipe.sources,xp:journeys.map(journey=>journey.xp),people:people.length,scenes:scenes.length,shared,monthCount:months.length,months,...checks,eligible:Object.entries(checks).every(([key,value])=>key==="waiting"?!value:Boolean(value))};

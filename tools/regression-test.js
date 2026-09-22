@@ -81,17 +81,17 @@ test("koishi synthesis requires both sources, breadth, shared success and winter
  s.run('S.calendarIndex=16;for(const name of ["癫佬","电波"]){const j=traitJourney(name);Object.assign(j,{xp:6,npcs:["班长","同人女","体育生","中二病"],scenes:["classroom","club","holiday"],positiveNpcs:["班长"]});}');
  assert.equal(s.run('fusionEligibility("koishi").eligible'),false,"unselected source must not synthesize");
 });
-test("other hidden recipes are disabled without removing their ordinary growth lines",()=>{
+test("other hidden recipes are deleted without removing their ordinary growth lines",()=>{
  const bocchi=traitRuntime(["社恐","吉他手","认真"]);
- bocchi.run('S.calendarIndex=12;for(const name of ["社恐","吉他手"]){const j=traitJourney(name);Object.assign(j,{xp:5,npcs:["班长","同人女"],scenes:["club","campus"],positiveNpcs:["班长"],styles:{}});S.traitProgress[name]=5;}traitJourney("吉他手").styles.performance=1;traitJourney("吉他手").highStressUses=1;ensureNpc("班长",4);S.npcTrust["班长"]=2;');
+ bocchi.run('S.calendarIndex=12;for(const name of ["社恐","吉他手"]){const j=traitJourney(name);Object.assign(j,{xp:5,npcs:["班长","同人女"],scenes:["club","campus"],positiveNpcs:["班长"],styles:{}});S.traitProgress[name]=5;}traitJourney("吉他手").styles.performance=1;ensureNpc("班长",4);S.npcTrust["班长"]=2;');
  assert.equal(bocchi.run('fusionEligibility("bocchi").eligible'),false);
- assert.equal(bocchi.run('fusionEligibility("bocchi").disabled'),true);
+ assert.equal(bocchi.run('fusionEligibility("bocchi").missingRecipe'),true);
  assert.equal(bocchi.run('getTraitLevel("社恐")'),2);
  assert.equal(bocchi.run('getTraitLevel("吉他手")'),2);
  const yukino=traitRuntime(["完美主义","冰山","认真"]);
  yukino.run('S.calendarIndex=12;S.stats.academic=16;for(const name of ["完美主义","冰山"]){const j=traitJourney(name);Object.assign(j,{xp:5,npcs:["班长","同人女"],scenes:["classroom","campus"],positiveNpcs:["班长"],styles:{}});S.traitProgress[name]=5;}traitJourney("完美主义").styles["direct-help"]=1;traitJourney("冰山").failures=1;');
  assert.equal(yukino.run('fusionEligibility("yukino").eligible'),false);
- assert.equal(yukino.run('fusionEligibility("yukino").disabled'),true);
+ assert.equal(yukino.run('fusionEligibility("yukino").missingRecipe'),true);
  assert.equal(yukino.run('getTraitLevel("完美主义")'),2);
  assert.equal(yukino.run('getTraitLevel("冰山")'),2);
  assert.deepEqual(yukino.json('enabledFusionRecipes().map(item=>item.hidden)'),["古明地恋"]);
@@ -165,8 +165,8 @@ test("bad saves and action histories preserve the current game",()=>{
  }
 });
 test("debug cannot overwrite normal save or bypass evolution time gate",()=>{
- const r=runtime();r.launch({traits:["癫佬","电波","认真"]});const saved=r.storage.get("fuzhong-girl-v061");
- r.run("GameDebug.prepareFusion('古明地恋');saveLocalGame();");assert.equal(r.storage.get("fuzhong-girl-v061"),saved);assert(!r.state().hiddenTraits.includes("古明地恋"));
+ const r=runtime();r.launch({traits:["癫佬","电波","认真"]});const key=r.run("SAVE_KEY"),saved=r.storage.get(key);assert(saved);
+ r.run("GameDebug.prepareFusion('古明地恋');saveLocalGame();");assert.equal(r.storage.get(key),saved);assert(!r.state().hiddenTraits.includes("古明地恋"));
  r.run("GameDebug.jump(16);");assert.equal(r.elements.title.textContent,"没有人记得第一回合");
 });
 test("fixed event alternatives leave different persistent effects",()=>{
@@ -210,6 +210,6 @@ test("forum background posts are deterministic and do not add mandatory actions"
 test("graduation archive data reads habits, relationships and real rumors",()=>{
  const r=runtime();r.launch();
  const v=r.json('(()=>{S.exam.graduation=555;S.project={id:"archive",...PROJECTS.archive,progress:10,result:"缩小规模完成"};S.habits={study:"foundation",afterschool:"people",recovery:"sleep",tenure:{study:4,afterschool:4,recovery:4},history:[],configured:true,locked:["study","recovery"],flexible:"afterschool",socialFocus:"同人女"};ensureNpc("同人女",6);S.npcTrust["同人女"]=5;S.rumors=[{id:"doujin",title:"同人社编外人员",heard:true,response:"clarify",callbacks:[]}];return graduationCardData();})()');
- assert.equal(v.version,"0.6.1");assert.equal(v.stats.length,5);assert(v.routine.includes("基础复盘"));assert(v.relationships[0].includes("同人女"));assert.deepEqual(v.rumors,["同人社编外人员"]);assert(v.closing.length>20);
+ assert.equal(v.version,"0.6.2");assert.equal(v.stats.length,5);assert(v.routine.includes("基础复盘"));assert(v.relationships[0].includes("同人女"));assert.deepEqual(v.rumors,["同人社编外人员"]);assert(v.closing.length>20);
 });
 console.log(passed+" regression groups passed.");

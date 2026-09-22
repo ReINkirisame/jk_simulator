@@ -4,12 +4,12 @@
  <meta charset="UTF-8">
  <meta name="viewport" content="width=device-width, initial-scale=1.0">
  <meta name="description" content="附中女高模拟器：从九月入学到六月告别，用选择留下自己的三年。">
- <title>女高模拟器 · 0.6.1</title>
+ <title>女高模拟器 · 0.6.2</title>
  <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
 <div class="wrap">
- <header class="masthead"><span>附中生活手记</span><span>0.6.1 · 特质完善</span></header>
+ <header class="masthead"><span>附中生活手记</span><span>0.6.2 · 特质细修</span></header>
  <section id="setup">
   <div class="intro"><div class="eyebrow">从九月入学，到六月告别</div><h1>女高模拟器</h1><p>她不必样样出色。让擅长的事、遇见的人，和那些不太体面的瞬间，慢慢成为她。</p></div>
   <div class="card setup-card">
@@ -30,7 +30,7 @@
    <label class="family-select">家境<select id="family" onchange="refreshFamily()"><option value="modest">拮据</option><option value="ordinary" selected>普通</option><option value="comfortable">宽裕</option><option value="wealthy">富裕</option></select></label>
    <p id="familyHelp" class="notice"></p><p class="notice">背景不占属性点，是资源难度选择，并非等价加点。家庭收入不决定父母性格。必要学习与主线不收费。</p>
    <h2 class="section-gap">04 / 性格与兴趣 <span class="muted">从10个候选中选择3个</span></h2>
-   <div id="traitPool" class="rollgrid"></div><p class="notice">60项普通特质均有对应作用；正向特质判定修正合计最多+2。候选池完全随机。六项特质可以跨月成长，也能通过主动尝试后天形成（最多2项）。专属选项替代原选择，不叠拿原收益。当前隐藏角色仅开放古明地恋。</p>
+   <div id="traitPool" class="rollgrid"></div><p class="notice">60项普通特质均有对应作用；正向特质判定修正合计最多+2。候选池完全随机。六项特质可以跨月成长，也能通过主动尝试后天形成（最多2项）。专属选项替代原选择，不叠拿原收益。隐藏角色仅保留古明地恋。</p>
    <details class="seed-settings"><summary>随机种子与存档</summary><label>本局种子<input id="seedInput" type="text" maxlength="40"></label><button onclick="rerollSeed()">应用种子并重抽特质</button><button onclick="document.getElementById('saveFile').click()">导入存档</button><p class="notice">相同种子与相同选择会得到相同结果。应用种子会清除已选特质，不改变已分配的属性。</p></details>
    <button class="primary full-width start-button" onclick="startGame()">翻开第一页 · 开始高中生活</button>
   </div>
@@ -45,7 +45,7 @@
    <div class="stat" title="体能影响运动及每月恢复，不等于当前精力"><small>体能</small><b id="fitness">8</b><span id="xpFitness"></span></div>
    <div class="stat" title="创造用于绘画、写作、设计和策划"><small>创造</small><b id="creativity">8</b><span id="xpCreativity"></span></div>
    <div class="stat appearance-stat" title="外貌不增加信任；仪容为当月临时修正"><small>外貌</small><b id="appearance">8</b><span id="appearanceNote">缓慢变化</span></div>
-  </div><div class="resource-row" id="resourceRow"></div><div id="routineRow" class="routine-row hidden"></div><div class="buffs" id="buffs"></div><details class="trait-details"><summary>特质作用与成长</summary><div id="traitDetails"></div><h3>后天形成 · 自己决定</h3><p class="notice">在假期或熟人日常中选择“试一种自己的做法”。至少跨4个月，最早高一下学期由你决定是否接受；最多新增2项，不替换开局特质，也不提前积累成长经验。</p><div id="traitFormationInfo"></div></details></div>
+  </div><div class="resource-row" id="resourceRow"></div><div id="traitBenefitNotice" class="trait-benefit-notice hidden" aria-live="polite"></div><div id="routineRow" class="routine-row hidden"></div><div class="buffs" id="buffs"></div><details class="trait-details"><summary>特质作用与成长</summary><div id="traitDetails"></div><h3>后天形成 · 自己决定</h3><p class="notice">在假期或熟人日常中选择“试一种自己的做法”。至少跨4个月，最早高一下学期由你决定是否接受；最多新增2项，不替换开局特质，也不提前积累成长经验。</p><div id="traitFormationInfo"></div></details></div>
   <div class="grid"><div class="card story-card">
    <div class="story-topline"><span id="sectionTitle">本月手记</span><span id="pageMark"></span></div>
    <div class="scene"><div class="tag" id="tag"></div><h3 id="title"></h3><p id="text"></p></div>
@@ -60,6 +60,7 @@
  <noscript>这个游戏需要启用 JavaScript。</noscript>
 </div>
 <script src="./src/data/attributes.js"></script>
+<script src="./src/data/trait-texts.js"></script>
 <script src="./src/data/traits.js"></script>
 <script src="./src/data/npcs.js"></script>
 <script src="./src/data/trait-choices.js"></script>

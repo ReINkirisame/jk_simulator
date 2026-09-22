@@ -16,10 +16,10 @@ function fusionSeed(r,overlap=false){
 }
 const replaceable='[["普通办法","",()=>{S.flags.inheritedNormal=true;},{id:"normal",role:"bold",replaceable:true}],["安全办法","",()=>{}, {id:"safe",protected:true}]]';
 
-test("0.6.1 gives every one of the sixty normal traits a real rule and readable description",()=>{
+test("trait baseline gives every one of the sixty normal traits a real rule and readable description",()=>{
  const r=isolated();
  const out=r.json('(()=>{const rows=[];for(const [name] of TRAITS){S.pool=[TRAITS.find(item=>item[0]===name)];S.traits=[0];S.traitBenefits={months:{},records:[]};S.resources.energy=50;S.resources.stress=50;ensureNpc("班长",4);S.npcFamiliarity["班长"]=4;const p=TRAIT_PROFILES[name];const modifiers=traitActivityModifiers(p.skill,p.domains[0],{npc:"班长"});const applied=applyMonthlyTraitBenefits();rows.push({name,category:traitCategoryLabel(name),skill:p.skill,description:traitEffectDescription(name),effective:modifiers.some(x=>x.value!==0)||applied.some(x=>x.actual!==0)});}return {version:GAME_VERSION,count:TRAITS.length,profiles:Object.keys(TRAIT_PROFILES).length,rows};})()');
- assert.equal(out.version,"0.6.1");assert.equal(out.count,60);assert.equal(out.profiles,60);
+ assert.equal(out.version,"0.6.2");assert.equal(out.count,60);assert.equal(out.profiles,60);
  for(const row of out.rows){assert(["性格","技能","兴趣","生活","网络","命运"].includes(row.category),row.name);assert(row.description.length>5,row.name);assert(row.effective,row.name+" has no reachable effect");}
 });
 test("normal trait modifiers are pure, deterministic and capped at +2",()=>{
@@ -29,7 +29,7 @@ test("normal trait modifiers are pure, deterministic and capped at +2",()=>{
  assert.deepEqual(r.json('traitActivityModifiers("fitness","sport")'),[]);
 });
 test("conditional familiarity and calm bonuses enforce their stated boundaries",()=>{
- const r=isolated(["慢热"]);
+ const r=isolated(["傲娇"]);
  assert.deepEqual(r.json('traitActivityModifiers("expression","social",{npc:"班长"})'),[]);
  r.run('ensureNpc("班长",3);');assert.equal(r.run('traitActivityModifiers("expression","social",{npc:"班长"})[0].value'),1);
  const ice=isolated(["冰山"]);assert.equal(ice.run('S.resources.stress=69;traitActivityModifiers("expression","social")[0].value'),1);
@@ -153,18 +153,18 @@ test("Koishi replaces source social choices while preserving ordinary study and 
  const out=r.json('(()=>{const base='+replaceable+';const social=injectTraitChoices(base,{allowTraitChoices:true,tags:["npc","social"],npc:"班长",sceneCategory:"classroom",eventId:"fused-social",forceTraitChoice:true});const study=injectTraitChoices(base,{allowTraitChoices:true,activityDomain:"study",eventId:"fused-study",forceTraitChoice:true});S.project={id:"science",...PROJECTS.science,progress:0,result:null};const project=injectTraitChoices(base,{allowTraitChoices:true,activityDomain:"project",projectId:"science",eventId:"fused-project",forceTraitChoice:true});return {social:social[0][3].trait,study:study[0][3].trait,project:project[0][3].trait,locked:sourceTraitLocked("癫佬"),again:fusionEligibility("koishi").eligible};})()');
  assert.equal(out.social,"古明地恋");assert(["癫佬","电波"].includes(out.study));assert(["癫佬","电波"].includes(out.project));assert.equal(out.locked,true);assert.equal(out.again,false);
 });
-test("disabled hidden content cannot activate, lock source growth, or enter visible badges",()=>{
+test("deleted hidden content cannot activate, lock source growth, or enter visible badges",()=>{
  const r=isolated(["社恐","吉他手","完美主义","冰山"]);
  const before=r.state();assert.equal(r.run('GameDebug.prepareFusion("后藤独")'),false);assert.equal(r.run('GameDebug.prepareFusion("雪之下雪乃")'),false);assert.deepEqual(r.state(),before);
  const out=r.json('(()=>{S.hiddenTraits=["后藤独","雪之下雪乃"];traitJourney("社恐").fusedInto="后藤独";traitJourney("吉他手").fusedInto="后藤独";const before=S.fusionHistory.length;for(const id of ["bocchi","yukino"])acceptFusion(FUSION_RECIPES.find(item=>item.id===id));return {enabled:enabledFusionRecipes().map(item=>item.hidden),active:activeHiddenTraitNames(),locked:sourceTraitLocked("社恐"),badges:getVisibleTraitBadges().map(item=>item.label),history:S.fusionHistory.length-before,status:Object.keys(fusionStatus())};})()');
  assert.deepEqual(out.enabled,["古明地恋"]);assert.deepEqual(out.active,[]);assert.equal(out.locked,false);assert(!out.badges.some(label=>label.includes("后藤独")||label.includes("雪之下雪乃")));assert.equal(out.history,0);assert.deepEqual(out.status,["古明地恋"]);
 });
 test("trait UI exposes category, effects, acquired origin and the opportunity cost of replacement",()=>{
- const r=runtime();assert(r.elements.traitPool.innerHTML.includes("trait-type"));assert(r.elements.traitPool.innerHTML.includes("trait-card-effect"));assert(r.elements.traitPool.innerHTML.includes("本版不设等级")||r.elements.traitPool.innerHTML.includes("可成长"));
+ const r=runtime();assert(r.elements.traitPool.innerHTML.includes("trait-type"));assert(r.elements.traitPool.innerHTML.includes("trait-card-effect"));assert(r.elements.traitPool.innerHTML.includes("trait-card-intro"));assert(r.elements.traitPool.innerHTML.includes("trait-flavor"));
  const s=isolated(["癫佬"]);s.run('S.acquiredTraits=["电波"];update();');
  assert(s.elements.traitDetails.innerHTML.includes("电波"));assert(s.elements.traitDetails.innerHTML.includes("后天形成"));assert(s.elements.traitFormationInfo.innerHTML.includes("后天名额 1/2"));
  s.run('showChoices("测试","机会成本","",'+replaceable+',()=>{},{allowTraitChoices:true,activityDomain:"study",eventId:"visible-replacement",forceTraitChoice:true});');
  const button=s.buttons().find(item=>item.classList.contains("trait-choice"));assert(button);assert(button.children.some(item=>item.textContent.includes("替代：普通办法")&&item.textContent.includes("不获得原收益")));assert(button.title.includes("精力"));
  assert(!s.elements.debugInfo.textContent.includes("后藤独"));assert(!s.elements.debugInfo.textContent.includes("雪之下雪乃"));
 });
-console.log(passed+" v0.6.1 trait groups passed.");
+console.log(passed+" baseline trait groups passed.");

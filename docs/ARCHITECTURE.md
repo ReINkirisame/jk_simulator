@@ -1,4 +1,4 @@
-# 当前代码结构（0.6.1）
+# 当前代码结构（0.6.2）
 
 ## 加载与状态
 
@@ -24,7 +24,7 @@
 | rng | 种子与当前随机状态 |
 | journal / debug | 日志与调试局标记 |
 
-npcFamiliarity 是相处熟悉度计数；慢热、傲娇的基础作用要求对象关系≥3或熟悉度≥3，其他“已经熟悉”的情境修正按各自明示条件读取关系。旧 `traitMilestones` 字段仍留在新状态中供旧结构辨认，当前合成只读 `traitJourneys`。
+npcFamiliarity 是相处熟悉度计数；慢热要求熟悉度≥3、提供+2；傲娇要求关系≥3或熟悉度≥3、提供+1，其他“已经熟悉”的情境修正按各自明示条件读取关系。旧 `traitMilestones` 字段仍留在新状态中供旧结构辨认，当前合成只读 `traitJourneys`。
 
 ## 三年主流程
 
@@ -34,6 +34,8 @@ life.js 根据 attributes.js 中的 CALENDAR 推进月份：月间收入、恢�
 - 高二：选择一项项目和三类生活习惯，经历分工、试做、预算、展示与交付；1月、3月可各复盘一次习惯。
 - 高三：9月选择优先方向并锁定两类既有习惯，寒假只允许调整剩余一类；经历模拟考试、旧事回收、告别与毕业。
 - 假期：一次主要安排与一次人物互动。普通互动与假期提供可选练习入口，进入后取代该次原行动，不叠加原收益；未选时不会额外弹出菜单。重要初遇不因此被强制跳过。
+
+0.6.2删除了高一10月的特殊人物小结函数及分支；该月使用普通月末流程。7月的学年手记与毕业档案不变。
 
 events-year2.js 是历史文件名，实际保存高一下事件。高二内容位于 life-events.js。
 
@@ -45,7 +47,7 @@ school-life.js 只保存定义：三个习惯槽、可选习惯、论坛背景�
 
 论坛每月从可用模板确定性选两条，不调用主随机源，因此不会因为展示背景帖改变考试或事件骰点。传闻根据存档真实状态按优先级选择，同一存档中同一条只出现一次，两条传闻至少间隔2个月。传闻回应记录在 choiceHistory；后续最多由两个不同NPC提起，防止每次见面重复同一句话。
 
-论坛和传闻都是单局状态，0.6.1没有服务器、全玩家统计或跨周目图鉴。不要把静态模板描述成真实玩家帖子。
+论坛和传闻都是单局状态，0.6.2没有服务器、全玩家统计或跨周目图鉴。不要把静态模板描述成真实玩家帖子。
 
 share-card.js 从 graduationPortrait 读取最终状态，并在浏览器 Canvas 中生成PNG。图中不存在的内容不得为了排版“补全”；新增毕业字段时应同时更新页面画像、卡片数据测试和绘制逻辑。
 
@@ -113,11 +115,15 @@ run(action, context) 可接管复杂流程。返回 HANDLED 时，子流程负�
 
 trait-choices.js 定义社交选项、TRAIT_ACTIVITY_SETS 与 FUSION_RECIPES；trait-system.js 为每项常规特质隔离成长，检查月份、人物、场景与行为。六项特质各在跨4/8个月使用后达Lv.2/3，社交与普通活动共用同月上限。
 
-当前只启用古明地恋。各来源至少4个月，两个来源月份并集至少12个月，最早日历索引16；同月两来源不能冒充两个月。合成后 fusedInto 接管来源社交选项，普通活动来源模板和基础作用仍保留。enabledFusionRecipes / activeHiddenTraitNames / hiddenTraitEnabled 统一过滤暂停角色，UI、判定、合成、毕业与调试入口不得绕过开关。
+当前只启用古明地恋。各来源至少4个月，两个来源月份并集至少12个月，最早日历索引16；同月两来源不能冒充两个月。合成后 fusedInto 接管来源社交选项，普通活动来源模板和基础作用仍保留。其他隐藏定义、配方、选项与专用门槛已移除；enabledFusionRecipes / activeHiddenTraitNames / hiddenTraitEnabled只接受现存的有效角色，调试不能凭空创建配方。
 
 ## 普通基础作用与后天形成
 
+trait-texts.js先于traits.js加载；TRAIT_TEXTS保存用户定稿的三列正文，TRAITS由键与简介派生。卡片四段式排版，traitEffectDescription保留完整版规则解释。
+
 traits.js 的 TRAIT_PROFILES 为60项普通特质提供分类与可执行领域/恢复/消耗。trait-benefits.js 分离纯计算 traitActivityModifiers 与实际结算 applyTraitActivityOutcome；正向普通特质修正合计+2封顶，负向另算。月间特质作用只调整精力/压力，各自恢复最多6，不发能力XP；需要支付的额外消耗每项每月首次真实生效时支付。非酋固定-1，真实失败复盘每月最多2次；外貌改为压力恢复，共享额度。预测不扣资源、不发奖励。
+
+currentTraitBenefitSummary只读取当前monthKey的已结算记录。月间记录包含合计原值、封顶预期值与实际值；首次成本记录附资源溢出引发的次级变化；非酋记录XP和属性实际变化。renderTraitBenefitNotice只刷新显示，不新建状态、消费随机或执行结算。
 
 trait-formation.js 数据与核心各一份：recordTraitFormationEvidence 只接受 rememberChoice 第6参 formationEvidence 数组和显式稳定ID映射，不按休息、独处、标签或文本猜性格。至少4个不同月份、索引6以后，tryTraitFormation 在月末最多询问一次；接受后S.acquiredTraits增加一项，成长从0开始；暂缓保留证据、无惩罚，3个月后可再问；最多新增2项，不修改原3项开局特质。
 
@@ -129,7 +135,7 @@ buildTraitPracticeEvent 返回标准对象事件，由 runStoryEvent 接回原 a
 
 当前仍有旧事件闭包，因此存档保存初始配置、随机状态、已执行按钮ID与最终状态校验。读取时从开局确定性重放，重新建立当前按钮与事件闭包，能恢复选择页、结果页和毕业页。不会把 JSON 内容当代码执行。
 
-存档带 schema 与精确版本号，0.6.1仅接受本版本，使用 fuzhong-girl-v061 独立键，不读取或覆盖旧版本键；重放失败时恢复当前正常游戏。调试局不保存、不覆盖普通存档。后续若改成直接快照，需先将所有流程位置改成可序列化事件ID。
+存档带 schema 与精确版本号，0.6.2仅接受本版本，使用 fuzhong-girl-v062 独立键，不读取或覆盖旧版本键；重放失败时恢复当前正常游戏。调试局不保存、不覆盖普通存档。后续若改成直接快照，需先将所有流程位置改成可序列化事件ID。
 
 任何改变随机调用次数、ID、效果或状态结构的发布都应升级版本，并决定迁移或明确拒绝旧档，不能沿用版本号却假称兼容。
 
@@ -139,6 +145,6 @@ buildTraitPracticeEvent 返回标准对象事件，由 runStoryEvent 接回原 a
 - npm test：规则边界、完整三年路线、自然后天形成与中途/毕业重放；测试数量以运行输出为准。
 - tools/browser-check.js：可选真实浏览器操作、响应布局和下载检查。
 - tools/build-standalone.js：将 CSS/JS 嵌入可独立运行的 HTML。
-- GameDebug.getState / validate / traits / formation / fusions：读取调试信息；check / jump / prepareFusion / setStat 会标记调试局；prepareFusion拒绝暂停角色。
+- GameDebug.getState / validate / traits / formation / fusions：读取调试信息；check / jump / prepareFusion / setStat 会标记调试局；prepareFusion拒绝不存在的角色。
 
 新增分支应验证实际后果和后续读取，不能仅验证字段写入或文字存在。

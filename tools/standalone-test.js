@@ -2,7 +2,7 @@
 const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path");
 const {runtime}=require("./test-runtime");
 const root=path.resolve(__dirname,"..");
-const standalone=path.resolve(process.argv[2]||path.join(root,"..","release","女高模拟器-v0.6.1.html"));
+const standalone=path.resolve(process.argv[2]||path.join(root,"..","release","女高模拟器-v0.6.2.html"));
 
 function finish(entry){
  const r=runtime({entry});
@@ -30,7 +30,7 @@ assert(!/<script\b[^>]*\bsrc=/.test(html),"standalone still references external 
 assert(!/<link\b[^>]*\brel=["']stylesheet["']/.test(html),"standalone still references external CSS");
 const sourceHtml=fs.readFileSync(path.join(root,"index.html"),"utf8");
 assert.equal([...html.matchAll(/<script\b/g)].length,[...sourceHtml.matchAll(/<script\b/g)].length,"unexpected embedded script count");
-assert(html.includes("0.6.1"),"standalone has not been versioned to 0.6.1");
+assert(html.includes("0.6.2"),"standalone has not been versioned to 0.6.2");
 const source=finish(path.join(root,"index.html"));
 const bundled=finish(standalone);
 assert.deepEqual(bundled.state,source.state,"source and standalone final state differ");

@@ -41,7 +41,7 @@ for(const profile of profiles){
  assert.equal(state.phase,"graduated",profile.name+" did not graduate");
  assert.equal(new Set(seen).size,34,"calendar skipped a month");
  assert.equal(state.calendarIndex,33);
- assert(state.flags.octoberPortraitShown&&state.flags.lanternStyle&&state.examDetails.monthly);
+ assert(!state.flags.octoberPortraitShown&&state.flags.lanternStyle&&state.examDetails.monthly);
  assert.equal(state.habits.configured,true,"habit setup was skipped");
  assert.equal(state.habits.history.filter(item=>item.mode==="initial"&&item.slot!=="socialFocus").length,3,"initial habits should be configured exactly once");
  assert.equal(state.flags.seniorHabitsLocked,true,"senior habit lock was skipped");
