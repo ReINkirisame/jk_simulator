@@ -104,28 +104,33 @@ const TRAIT_ACTIVITY_SETS=[
    {id:"dian-study-boss",domains:["study"],style:"battle",label:"‘杀杀杀！’把错题拆成这一轮的敌方单位",result:"你在草稿纸上写下作战顺序，逐个攻击真正卡住的知识点。喊得再响，也得自己把步骤算完。"},
    {id:"dian-project-cut",domains:["project","creation"],style:"cut",label:"砍断、切开、剁碎这个卡住的方案",result:"你把废案拆成能单独验证的小块。决斗对象是眼前的问题，没人需要真的挨上一刀。"},
    {id:"dian-match",domains:["competition"],style:"duel",label:"‘战斗，爽！’把这轮比赛当成正式决斗",result:"你按规则确认场地与目标，给自己立下这一回合必须完成的动作。兴奋不能免除体力消耗。"},
-   {id:"dian-stage",minLevel:2,domains:["performance"],style:"performance",label:"宣布舞台进入 Boss 战第二阶段",result:"你把上场前的慌乱喊成开战口号，然后按排练过的顺序真正开始。"}
+   {id:"dian-stage",minLevel:2,domains:["performance"],style:"performance",label:"宣布舞台进入 Boss 战第二阶段",result:"你把上场前的慌乱喊成开战口号，然后按排练过的顺序真正开始。"},
+   {id:"dian-finish",minLevel:3,domains:["study","project","creation","competition","performance"],style:"cut",cost:{energy:-8,stress:3},label:"认准弱点，集中火力打完最后一回合",result:"你不再对每一处问题平均开火。要砍的是最关键的那一段；这一轮更短，却仍然绷得很紧。"}
   ]},
  {id:"denpa-activity",trait:"电波",resolver:"traitActivity",mode:"experiment",stat:"creativity",difficulty:8,
   offerChance:.78,cost:{energy:-7,stress:1},tags:["电波","试验"],
   choices:[
    {id:"denpa-study",domains:["study"],style:"premise",label:"假设答案来自另一条路，再把省略的证明补齐",result:"你从一个奇怪的联想往回推。只有把每一步补全，它才算方法，而不是恰好猜中。"},
    {id:"denpa-prototype",domains:["project"],style:"worldline",label:"按另一个版本的设想，先做一块能验证的样品",result:"你给跳跃的念头画出测试边界，决定用一个小样品检查它究竟能不能用。"},
-   {id:"denpa-dream",domains:["creation","music"],style:"signal",label:"把那个说不清的片段转成别人能看见或听见的草稿",result:"你试着固定脑内飘过的形状与节奏。素材必须真正留下来，灵感才不只是一句‘我懂了’。"}
+   {id:"denpa-dream",domains:["creation","music"],style:"signal",label:"把那个说不清的片段转成别人能看见或听见的草稿",result:"你试着固定脑内飘过的形状与节奏。素材必须真正留下来，灵感才不只是一句‘我懂了’。"},
+   {id:"denpa-connect",minLevel:2,domains:["study","project","creation","music"],style:"premise",cost:{energy:-6,stress:2},label:"给两条不相干的线索接上同一个入口",result:"你先列出输入和想得到的结果，再寻找中间那条绕远的路。联想更集中，也更需要盯住自己有没有跳步。"},
+   {id:"denpa-translate",minLevel:3,domains:["study","project","creation","music"],style:"signal",cost:{energy:-8,stress:0},label:"把接收到的片段译成可以照着做的步骤",result:"你给每一个省略号补了注释。翻译自己的脑内信号很费精力，但终于不用一边做一边担心别人完全读不懂。"}
   ]},
  {id:"shy-activity",trait:"社恐",resolver:"traitActivity",mode:"rehearse",stat:"expression",difficulty:7,
   offerChance:.76,cost:{energy:-6,stress:2},tags:["社恐","排练"],
   choices:[
    {id:"shy-project-note",domains:["project"],style:"indirect",label:"先写出一份完整交接说明，再决定怎么开口",result:"你把会在说话时漏掉的细节留在纸上。这份说明仍要经得起检查，并不会自动完成全部工作。"},
    {id:"shy-performance",domains:["performance","music"],style:"performance",label:"先完整排练一遍，把最难开口的部分写进提示卡",result:"你没有逼自己突然变得外向，只给下一步留下一条紧张时也找得到的路。"},
-   {id:"shy-creation",minLevel:2,domains:["creation"],style:"indirect",label:"做出一个能独立说明想法的小样，先不急着公开",result:"没有旁人即时评价的几分钟里，你把卡住的表达写进作品，再检查它是不是说清了。"}
+   {id:"shy-creation",minLevel:2,domains:["creation"],style:"indirect",label:"做出一个能独立说明想法的小样，先不急着公开",result:"没有旁人即时评价的几分钟里，你把卡住的表达写进作品，再检查它是不是说清了。"},
+   {id:"shy-cue",minLevel:3,domains:["project","performance","music","creation"],style:"indirect",cost:{energy:-7,stress:0},label:"按预演过的提示一步步完成，需要时允许自己停顿",result:"你把停顿也留进了计划。准备仍然费力，但临场不必再为每一秒安静额外责怪自己。"}
   ]},
  {id:"guitar-activity",trait:"吉他手",resolver:"traitActivity",mode:"music",stat:"creativity",difficulty:7,
   offerChance:.80,cost:{energy:-7,stress:1},tags:["音乐","练习"],
   choices:[
    {id:"guitar-practice",domains:["music"],style:"music",label:"只练最不稳的四小节，录下来听一次",result:"你没有从头刷一遍熟悉的部分，而是让节拍器和录音暴露真正的问题。"},
    {id:"guitar-live",domains:["performance"],style:"performance",label:"把练过的吉他段落完整弹完，失误后也不重启",result:"你选择一段确实练过的内容。现场不是零成本的能力展示，手和注意力都要坚持到最后。"},
-   {id:"guitar-compose",minLevel:2,domains:["creation"],style:"music",label:"写一段有开头和结尾的吉他小曲",result:"你先定下很小的规模，再把和弦、节奏和结尾接在一起。今天要留下的是一段能重放的作品。"}
+   {id:"guitar-compose",minLevel:2,domains:["creation"],style:"music",label:"写一段有开头和结尾的吉他小曲",result:"你先定下很小的规模，再把和弦、节奏和结尾接在一起。今天要留下的是一段能重放的作品。"},
+   {id:"guitar-complete",minLevel:3,domains:["music","performance","creation"],style:"music",cost:{energy:-8,stress:0},label:"按自己的编排弹完整段，失误也接回节拍",result:"你已经记得最容易出错的位置。今天把力气花在弹完整段上，让小失误留在音乐里面。"}
   ]},
  {id:"perfect-activity",trait:"完美主义",resolver:"traitActivity",mode:"precision",stat:"academic",difficulty:8,
   offerChance:.78,cost:{energy:-10,stress:4},tags:["完美主义","校验"],
@@ -133,14 +138,16 @@ const TRAIT_ACTIVITY_SETS=[
    {id:"perfect-study",domains:["study"],style:"precision",label:"把这一类错题逐项验算，直到找出重复出错的原因",result:"你给每一步写上依据。检查比原计划更费时，也让模糊地带逐渐露出边界。"},
    {id:"perfect-project",domains:["project"],style:"precision",label:"为这一版做一张严格但有限的验收清单",result:"你把检查范围限定在这一版，逐项复现最容易出错的地方，不顺手追加新的目标。"},
    {id:"perfect-creation",domains:["creation","music"],style:"redo",label:"把最影响整体的一处重做，再交出这个版本",result:"你只挑一个真正影响完成度的缺口，却仍不得不付出返工的时间与精力。"},
-   {id:"perfect-performance",minLevel:2,domains:["performance","competition"],style:"performance",label:"按检查表完整模拟一轮，最后明确停止修改",result:"你试着把标准用于准备，而不是在临场时继续扩大标准。检查越认真，剩下的体力越需要计算。"}
+   {id:"perfect-performance",minLevel:2,domains:["performance","competition"],style:"performance",label:"按检查表完整模拟一轮，最后明确停止修改",result:"你试着把标准用于准备，而不是在临场时继续扩大标准。检查越认真，剩下的体力越需要计算。"},
+   {id:"perfect-accept",minLevel:3,domains:["study","project","creation","music","performance","competition"],style:"precision",cost:{energy:-8,stress:4},label:"只复核最容易失误的环节，达到标准就交付",result:"重复校验留下了经验：你知道哪些地方必须重查，也知道哪些已经足够。标准仍然让你紧张，但少了一轮无效返工。"}
   ]},
  {id:"ice-activity",trait:"冰山",resolver:"traitActivity",mode:"boundary",stat:"expression",difficulty:7,
   offerChance:.76,cost:{energy:-4,stress:-2},tags:["冰山","边界"],
   choices:[
    {id:"ice-project",domains:["project"],style:"direct-help",label:"只接下能按时完成的一小段，把边界写清楚",result:"你去掉含糊的承诺，在可承担的范围内开始工作。进展不会很快，但也没有把别人的任务全部搬到自己身上。"},
    {id:"ice-competition",domains:["competition","performance"],style:"direct",label:"退出无关的热闹，按自己的准备清单做完下一步",result:"你把注意力留给眼前可控的动作。别人如何评价你的冷淡，不能替代这次实际准备。"},
-   {id:"ice-creation",minLevel:2,domains:["creation"],style:"direct",label:"不急着解释，先把承诺过的最小版本做出来",result:"你删去宣传与铺垫，把今天能兑现的部分留在作品里。规模很小，却有明确的结束位置。"}
+   {id:"ice-creation",minLevel:2,domains:["creation"],style:"direct",label:"不急着解释，先把承诺过的最小版本做出来",result:"你删去宣传与铺垫，把今天能兑现的部分留在作品里。规模很小，却有明确的结束位置。"},
+   {id:"ice-handover",minLevel:3,domains:["project","competition","performance","creation"],style:"direct-help",cost:{energy:-5,stress:-3},label:"把这一段做到能交接，再明确说到这里为止",result:"你多花一点力气把结束位置收拾清楚。简短的说明后面有了可用的成果，也有了不再继续加码的理由。"}
   ]}
 ];
 TRAIT_ACTIVITY_SETS.forEach(set=>{

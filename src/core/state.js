@@ -13,6 +13,7 @@ function freshState(){return {
  usedRandom:[],usedRoute:{},history:[],flags:{},exam:{},examDetails:{},
  traitProgress:{},traitJourneys:{},hiddenTraits:[],hiddenTraitSources:{},fusionHistory:[],
  acquiredTraits:[],traitFormation:{},traitFormationHistory:[],
+ traitPromotions:[],traitAnnual:[],eventCallbacks:[],
  traitChoiceState:{misses:0,lastEventId:null,recentChoiceIds:[]},
  tendencies:{},choiceHistory:[],memories:[],checks:[],npcImpressions:{},
  traitMilestones:{months:[],npcs:[],scenes:[]},

@@ -3,7 +3,7 @@
 const {chromium}=require("playwright");
 const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path");
 const base=process.argv[2]||"http://127.0.0.1:4173/";
-const output=path.resolve(__dirname,"../../qa-v0.6.2");
+const output=path.resolve(__dirname,"../../qa-v0.6.3");
 fs.mkdirSync(output,{recursive:true});
 (async()=>{
  const browser=await chromium.launch({headless:true});
@@ -66,7 +66,7 @@ fs.mkdirSync(output,{recursive:true});
   assert(state.hiddenTraits.every(name=>name==="古明地恋"));
   assert.equal(state.flags.octoberPortraitShown,undefined);
   const [download]=await Promise.all([page.waitForEvent("download"),page.getByRole("button",{name:"导出存档",exact:true}).click()]);
-  const exported=JSON.parse(fs.readFileSync(await download.path(),"utf8"));assert.equal(exported.version,"0.6.2");
+  const exported=JSON.parse(fs.readFileSync(await download.path(),"utf8"));assert.equal(exported.version,"0.6.3");
   const [cardDownload]=await Promise.all([page.waitForEvent("download"),page.getByRole("button",{name:"下载毕业档案图片",exact:true}).click()]);
   assert(cardDownload.suggestedFilename().endsWith("-毕业档案.png"));
   assert(fs.statSync(await cardDownload.path()).size>10_000,"graduation card PNG is unexpectedly small");

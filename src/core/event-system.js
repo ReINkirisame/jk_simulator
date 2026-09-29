@@ -55,6 +55,7 @@ function activityEventContext(event){
  return {};
 }
 function runStoryEvent(event,done){
+ event=withPastChoiceCallback(event);
  if(event.condition&&!event.condition()){done();return;}
  const context={eventId:event.id,...activityEventContext(event),...(typeof event.context==="function"?event.context():event.context||{})};
  const choices=(typeof event.choices==="function"?event.choices():event.choices).filter(choice=>!choice.condition||choice.condition());

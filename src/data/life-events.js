@@ -17,7 +17,7 @@ const LEGACY_FIXED_EFFECTS={
  "扫雪":[[FX.xp("fitness",2),FX.resource("energy",-7)],[FX.xp("academic",1),FX.resource("energy",-3),FX.flag("noticedSafety",true)]],
  "花灯在走廊展示":[[FX.xp("expression",1),FX.flag("lanternProud",true)],[FX.xp("creativity",2),FX.flag("lanternCompared",true)]],
  "班级新年联欢会":[[FX.flag("newYearStage",true)],[FX.resource("stress",-3)]],
- "跨年":[[FX.resource("energy",6),FX.resource("stress",-4)],[FX.trust("班长",1),FX.resource("energy",-3)]],
+ "跨年":[[FX.resource("energy",6),FX.resource("stress",-4)],[]],
  "期末复习":[[FX.flag("revisionMethod","计划")],[FX.flag("revisionMethod","补弱"),FX.resource("energy",-3),FX.xp("academic",1)]],
  "语文课话剧排练演出":[[FX.flag("rehearsedDrama",true),FX.xp("creativity",1)],[FX.flag("improvisedDrama",true),FX.resource("stress",2)]],
  "周日去南湖公园的游乐园玩":[[FX.xp("fitness",1),FX.resource("energy",-10),FX.resource("stress",-6)],[FX.resource("energy",6),FX.trust("主人公",1)]],

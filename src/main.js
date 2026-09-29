@@ -1,6 +1,6 @@
 "use strict";
 
-const GAME_VERSION="0.6.2";
+const GAME_VERSION="0.6.3";
 
 /**
  * 开发期的轻量内容检查。
