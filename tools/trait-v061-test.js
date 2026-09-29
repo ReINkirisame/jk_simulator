@@ -19,7 +19,7 @@ const replaceable='[["普通办法","",()=>{S.flags.inheritedNormal=true;},{id:"
 test("trait baseline gives every one of the sixty normal traits a real rule and readable description",()=>{
  const r=isolated();
  const out=r.json('(()=>{const rows=[];for(const [name] of TRAITS){S.pool=[TRAITS.find(item=>item[0]===name)];S.traits=[0];S.traitBenefits={months:{},records:[]};S.resources.energy=50;S.resources.stress=50;ensureNpc("班长",4);S.npcFamiliarity["班长"]=4;const p=TRAIT_PROFILES[name];const modifiers=traitActivityModifiers(p.skill,p.domains[0],{npc:"班长"});const applied=applyMonthlyTraitBenefits();rows.push({name,category:traitCategoryLabel(name),skill:p.skill,description:traitEffectDescription(name),effective:modifiers.some(x=>x.value!==0)||applied.some(x=>x.actual!==0)});}return {version:GAME_VERSION,count:TRAITS.length,profiles:Object.keys(TRAIT_PROFILES).length,rows};})()');
- assert.equal(out.version,"0.6.2");assert.equal(out.count,60);assert.equal(out.profiles,60);
+ assert.equal(out.version,"0.6.3");assert.equal(out.count,60);assert.equal(out.profiles,60);
  for(const row of out.rows){assert(["性格","技能","兴趣","生活","网络","命运"].includes(row.category),row.name);assert(row.description.length>5,row.name);assert(row.effective,row.name+" has no reachable effect");}
 });
 test("normal trait modifiers are pure, deterministic and capped at +2",()=>{

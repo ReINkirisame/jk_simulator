@@ -148,7 +148,7 @@ function startCalendarMonth(){
  };
  if(!tryTraitFusion(proceed))proceed();
 }
-function runSeniorRemainder(){runBirthday(()=>npcInteraction(nextSocialNpc(),finishMonth));}
+function runSeniorRemainder(){runBirthday(()=>{if(!tryAnnualTraitDay(finishMonth))npcInteraction(nextSocialNpc(),finishMonth);});}
 function advanceCalendar(){S.calendarIndex+=1;startCalendarMonth();}
 function finishCalendarMonth(){
  if(tryTraitFormation(finishCalendarMonth))return;
@@ -183,6 +183,7 @@ function holidayEvent(){
   {id:"rest",label:"认真休息，留一点闲暇 · 恢复精力",text:"有些天没有特别值得写的事情。睡够以后，你才发现之前一直紧绷着。",effects:[FX.resource("energy",20),FX.resource("stress",-12)]}
  ];
  if(S.year===2&&S.project&&!S.project.result)choices.push({id:"project",label:"约伙伴把项目再做一段",run:()=>workOnProject("holiday"),impact:"寒假也给共同项目留了时间"});
+ choices.push({id:"online",label:"把一段近况整理成帖子，认真回复留言 · 线上表达",preview:"精力-6 · 表达经验+1～2；成功压力-3，失败压力+2",run:()=>onlineExpression("假期的一条近况")});
  choices.push(traitPracticeEntry());
  return {id:"holiday:"+S.year+":"+S.month,title,tag:S.term,text:routeNote+"\n\n你只选一件主要的事。学力、创造和体能不会因为放假就自动增长；外貌也不会被普通练习改变。",choices};
 }
@@ -199,15 +200,16 @@ function chooseProject(done){
  }));
  runStoryEvent({id:"project-choice",tag:"高二 · 共同项目",title:"这一年，想坚持什么",text:"社团不会替你自动决定这件事。选一项想做下去的计划，和一个人把它从报名表带到学年末；薄弱的能力可以练，规模也可以调整。",choices},done);
 }
-function workOnProject(mode){
+function workOnProject(mode,options={}){
  if(!S.project)return "你先把想做的事情记下，等伙伴确定以后再开始。";
  const p=S.project,stat=mode==="roles"||mode==="test"?"expression":p.skill;
  const check=activityCheck(stat,p.name+" · "+({roles:"商量分工",test:"公开试做",polish:"打磨",repair:"修订",holiday:"假期协作"}[mode]||"样品"),8,[
+  {label:"教师节记下的边界",value:options.advice?1:0},
   {label:"已经形成的信任",value:(S.npcTrust[p.partner]||0)>=4?1:0},
   {label:"早期校园经验",value:(p.skill==="academic"&&S.flags.sciencePractice)||(p.skill==="creativity"&&S.flags.lanternStyle==="creative")||(stat==="expression"&&S.flags.studentCouncilStatus==="正式干事")?1:0},
   ...habitProjectModifiers()
  ],null,{activityDomain:"project",npc:p.partner,projectId:p.id});
- gainExperience(stat,2,"持续做项目");changeResource("energy",mode==="polish"?-10:-7);
+ gainExperience(stat,2,"持续做项目");changeResource("energy",options.advice?-5:mode==="polish"?-10:-7);
  const amount=check.grade==="great"?3:check.margin>=0?2:1;p.progress+=amount;
  if(check.margin>=0){changeTrust(p.partner,1,"一起完成了具体工作");changeResource("stress",-2);}
  else {changeResource("stress",3);S.flags.projectSetbacks=(S.flags.projectSetbacks||0)+1;}

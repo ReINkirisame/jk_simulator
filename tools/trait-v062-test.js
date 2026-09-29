@@ -17,8 +17,8 @@ test("all sixty introductions and quotes preserve the edited workbook verbatim",
  assert.equal(texts.length,60);
  assert.equal(digest(texts),"5f4e157fcd48da74926b63900bef233cdd4a693ffcd77a6b3f85d9edf5d60288");
  assert.deepEqual(r.json('TRAITS.map(([name,intro])=>[name,intro])'),texts.map(([name,intro])=>[name,intro]));
- const unchanged=r.json('Object.entries(TRAIT_TEXTS).filter(([name])=>!["社交悍匪","天生卷王","慢热","话痨","直率"].includes(name)).map(([name,t])=>[name,t.effect])');
- assert.equal(digest(unchanged),"1551772d14d4e5d9068520b0715c764e7846e78a94e416dc8c7524fa2ee1745a");
+ const unchanged=r.json('Object.entries(TRAIT_TEXTS).filter(([name])=>!["社交悍匪","天生卷王","慢热","话痨","直率","地下偶像","白切黑","外冷内热"].includes(name)).map(([name,t])=>[name,t.effect])');
+ assert.equal(digest(unchanged),"5c1da52c27ff24865ee1bdbae4bbc3adf3c8f6384e1e9057076c3719eeba5df6");
 });
 test("every setup card renders four ordered text sections with escaped content",()=>{
  const r=runtime(),seen=new Set();
@@ -137,12 +137,12 @@ test("hidden definitions, choices and recipes contain only Koishi, not disabled 
  const files=fs.readdirSync(src,{recursive:true}).filter(file=>file.endsWith(".js"));
  for(const file of files)assert(!/后藤独|雪之下雪乃|bocchi|yukino|showOctoberPortrait|octoberPortraitShown|highStressUses/.test(fs.readFileSync(path.join(src,file),"utf8")),file);
 });
-test("0.6.2 has its own save key and rejects old saves without altering either run",()=>{
+test("current version has its own save key and rejects old saves without altering either run",()=>{
  const r=runtime();r.storage.set("fuzhong-girl-v061","old-save-kept");r.launch({traits:["吃货","卷王","认真"]});r.click();
- const before=r.state(),save=r.json('savePayload()');assert.equal(save.version,"0.6.2");assert.equal(r.run('SAVE_KEY'),"fuzhong-girl-v062");
+ const before=r.state(),save=r.json('savePayload()');assert.equal(save.version,"0.6.3");assert.equal(r.run('SAVE_KEY'),"fuzhong-girl-v063");
  const old={...save,version:"0.6.1"};assert.throws(()=>r.run('restoreGame('+JSON.stringify(old)+')'),/版本不兼容/);
  assert.deepEqual(r.state(),before);assert.equal(r.storage.get("fuzhong-girl-v061"),"old-save-kept");
  r.run('restoreGame('+JSON.stringify(save)+')');assert.deepEqual(r.state(),before);
  const text=r.elements.traitBenefitNotice.innerHTML;r.run('update();update();');assert.equal(r.elements.traitBenefitNotice.innerHTML,text);assert.deepEqual(r.state(),before);
 });
-console.log(passed+" v0.6.2 trait groups passed.");
+console.log(passed+" v0.6.2 legacy trait groups passed.");

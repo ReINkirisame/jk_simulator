@@ -1,4 +1,4 @@
-# 当前代码结构（0.6.2）
+# 当前代码结构（0.6.3）
 
 ## 加载与状态
 
@@ -16,7 +16,7 @@
 | traitJourneys / traitProgress | 每项成长特质的经验、月份、人物、场景、成功对象与行为风格；兼容进度镜像 |
 | hiddenTraits / hiddenTraitSources / fusionHistory | 隐藏结果、来源与历史；对外只读取启用的角色 |
 | acquiredTraits / traitFormation / traitFormationHistory | 后天特质、跨月行为证据、暂缓期限与自主接受历史 |
-| traitBenefits | 普通特质每月结算锁、首次消耗、非酋复盘次数与实际效果 |
+| traitPromotions | 升级后待展示的新选项及已展示/被新等级替代记录 |\n| traitAnnual / eventCallbacks | 年度日常与早期选择后续的实际完成记录 |\n| traitBenefits | 普通特质每月结算锁、首次消耗、非酋复盘次数与实际效果 |
 | flags / choiceHistory / memories | 条件、选择记录、重要记忆 |
 | project / examArchive | 共同项目、历次考试 |
 | habits | 三类习惯、持续月数、变更记录、高三锁定与社交焦点 |
@@ -38,6 +38,16 @@ life.js 根据 attributes.js 中的 CALENDAR 推进月份：月间收入、恢�
 0.6.2删除了高一10月的特殊人物小结函数及分支；该月使用普通月末流程。7月的学年手记与毕业档案不变。
 
 events-year2.js 是历史文件名，实际保存高一下事件。高二内容位于 life-events.js。
+
+## 0.6.3的日常与回响入口
+
+trait-life.js（数据/核心各一份）提供年度场景与线上表达。tryAnnualTraitDay仅在11月普通互动位置调用，选择后写traitAnnual；不是额外串联的第四场事件。buildAnnualTraitEvent每次新建对象，不改全局事件模板。
+
+story-callbacks.js的fixedChoiceCallback将高一才俊杯替换为舞台/后台取舍；原旧数组效果不再叠加。withPastChoiceCallback为高二3月、高三3月返回浅拷贝的事件和选项，保留其他选择及原延续函数；读取teacherAdvice/oldFriendsKept、quietCorner/campusCompanion。只有实际选择相关做法才写eventCallbacks，后续不重复装饰。NPC必须来自已经发生的同行记录，不能按当前最亲近者冒充当年的同伴。
+
+recordTraitUse记录traitPromotions，injectTraitChoices在场景约束检查后优先选择未展示的新等级模板，仍只替换一个普通位置。新选项展示状态参与存档校验，不能在UI刷新里消费。
+
+traitActivityContributors纯读取月费状态：免费/已付优先，再按单位修正消耗排序，逐项分配+2额度。traitNames仅包含实际贡献者，skippedTraits供判定文本解释未计入项。resolveCheck保留元数据，扣费不再反向解析显示文字。按钮预测共用同一分配函数。
 
 ## 生活习惯、论坛与传闻
 
@@ -135,7 +145,7 @@ buildTraitPracticeEvent 返回标准对象事件，由 runStoryEvent 接回原 a
 
 当前仍有旧事件闭包，因此存档保存初始配置、随机状态、已执行按钮ID与最终状态校验。读取时从开局确定性重放，重新建立当前按钮与事件闭包，能恢复选择页、结果页和毕业页。不会把 JSON 内容当代码执行。
 
-存档带 schema 与精确版本号，0.6.2仅接受本版本，使用 fuzhong-girl-v062 独立键，不读取或覆盖旧版本键；重放失败时恢复当前正常游戏。调试局不保存、不覆盖普通存档。后续若改成直接快照，需先将所有流程位置改成可序列化事件ID。
+存档带 schema 与精确版本号，0.6.3仅接受本版本，使用 fuzhong-girl-v063 独立键，不读取或覆盖旧版本键；重放失败时恢复当前正常游戏。调试局不保存、不覆盖普通存档。后续若改成直接快照，需先将所有流程位置改成可序列化事件ID。
 
 任何改变随机调用次数、ID、效果或状态结构的发布都应升级版本，并决定迁移或明确拒绝旧档，不能沿用版本号却假称兼容。
 

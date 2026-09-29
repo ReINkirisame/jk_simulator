@@ -63,12 +63,27 @@ function applicableTraitProfiles(stat,domain,context={}){
   return true;
  });
 }
+// 纯读取：先使用无新增月费的来源，再按单位加成的消耗排列；同成本保留持有顺序。
+// 被上限完全挡掉的特质既不署名，也不扣费；只贡献一部分的来源仍支付一次完整月费。
+function traitActivityContributors(stat,domain,context={}){
+ const matching=applicableTraitProfiles(stat,domain,context),paid=S.traitBenefits?.months?.[monthKey()]?.costs||[];
+ const cost=p=>paid.includes(p.name)?0:Object.values(p.cost||{}).reduce((sum,value)=>sum+Math.abs(value),0);
+ const positive=matching.filter(p=>p.modifier>0).sort((a,b)=>cost(a)/a.modifier-cost(b)/b.modifier);
+ let remaining=TRAIT_ACTIVITY_BONUS_CAP;
+ const contributors=[],skipped=[];
+ for(const profile of positive){
+  const contribution=Math.min(remaining,profile.modifier);
+  if(contribution>0){contributors.push({...profile,contribution});remaining-=contribution;}else skipped.push(profile.name);
+ }
+ return {positive:contributors,negative:matching.filter(p=>p.modifier<0),skipped};
+}
 function traitActivityModifiers(stat,domain,context={}){
- const matching=applicableTraitProfiles(stat,domain,context),positive=matching.filter(p=>p.modifier>0),negative=matching.filter(p=>p.modifier<0);
+ const {positive,negative,skipped}=traitActivityContributors(stat,domain,context);
  const result=[];
  if(positive.length){
-  const total=positive.reduce((sum,p)=>sum+p.modifier,0);
-  result.push({label:"特质·"+positive.map(p=>p.name).join("、")+(total>TRAIT_ACTIVITY_BONUS_CAP?"（合计封顶）":""),value:Math.min(TRAIT_ACTIVITY_BONUS_CAP,total),traitNames:positive.map(p=>p.name)});
+  const total=positive.reduce((sum,p)=>sum+p.contribution,0);
+  const capped=skipped.length||positive.some(p=>p.contribution<p.modifier);
+  result.push({label:"特质·"+positive.map(p=>p.name+formatSigned(p.contribution)).join("、")+(capped?"（合计封顶）":""),value:total,traitNames:positive.map(p=>p.name),skippedTraits:skipped});
  }
  if(negative.length)result.push({label:"逆风·"+negative.map(p=>p.name).join("、"),value:negative.reduce((sum,p)=>sum+p.modifier,0),traitNames:negative.map(p=>p.name)});
  return result;
@@ -109,11 +124,6 @@ function applyTraitActivityOutcome(result,stat,domain,context={}){
  const month=traitBenefitState(),applied=[];
  // 以实际进入骰点明细的特质为准，不能重新按已经变化的压力猜测是否生效。
  const usedNames=new Set((result.modifiers||[]).flatMap(item=>item.traitNames||[]));
- // resolveCheck 的标准化目前只保留 label/value，因此也识别明确的统一标签。
- for(const item of result.modifiers||[]){
-  if(!item.label?.startsWith("特质·")&&!item.label?.startsWith("逆风·"))continue;
-  for(const name of normalTraitBenefitNames())if(item.label.replace("（合计封顶）","").split("·")[1]?.split("、").includes(name))usedNames.add(name);
- }
  for(const name of usedNames){
   const profile=TRAIT_PROFILES[name];
   if(!profile?.cost||month.costs.includes(name))continue;

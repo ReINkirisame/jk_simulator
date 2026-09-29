@@ -43,7 +43,7 @@ function resolveCheck({
  (Array.isArray(modifiers)?modifiers:[]).forEach(item=>{
    if(!item)return;
    const value=Number(item.value)||0;
-   if(value)normalized.push({label:item.label||"修正",value,...(item.traitNames?{traitNames:[...item.traitNames]}:{})});
+   if(value)normalized.push({label:item.label||"修正",value,...(item.traitNames?{traitNames:[...item.traitNames]}:{}),...(item.skippedTraits?.length?{skippedTraits:[...item.skippedTraits]}:{})});
  });
  const roll=rolled[0]+rolled[1];
  const modifierTotal=normalized.reduce((sum,item)=>sum+item.value,0);
@@ -60,8 +60,9 @@ function resolveCheck({
 function formatSigned(value){return value>0?`+${value}`:`${value}`}
 function formatCheck(result,{showDice=true}={}){
  const modifierText=result.modifiers.length
-   ?"，"+result.modifiers.map(item=>`${item.label}${formatSigned(item.value)}`).join("，")
+   ?"，"+result.modifiers.map(item=>`${item.label}${item.label.startsWith("特质·")?`（共${formatSigned(item.value)}）`:formatSigned(item.value)}`).join("，")
    :"";
  const diceText=showDice?`2d6=${result.dice[0]}+${result.dice[1]}，`:"";
- return `【${result.gradeLabel}】${diceText}${modifierText.replace(/^，/,"")} → 合计${result.total}；难度${result.difficulty}`;
+ const skipped=result.modifiers.flatMap(item=>item.skippedTraits||[]);
+ return `【${result.gradeLabel}】${diceText}${modifierText.replace(/^，/,"")} → 合计${result.total}；难度${result.difficulty}`+(skipped.length?`\n正向特质已达+2：${skipped.join("、")}本次未计入，不另付消耗。`:"");
 }

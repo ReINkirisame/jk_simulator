@@ -210,6 +210,6 @@ test("forum background posts are deterministic and do not add mandatory actions"
 test("graduation archive data reads habits, relationships and real rumors",()=>{
  const r=runtime();r.launch();
  const v=r.json('(()=>{S.exam.graduation=555;S.project={id:"archive",...PROJECTS.archive,progress:10,result:"缩小规模完成"};S.habits={study:"foundation",afterschool:"people",recovery:"sleep",tenure:{study:4,afterschool:4,recovery:4},history:[],configured:true,locked:["study","recovery"],flexible:"afterschool",socialFocus:"同人女"};ensureNpc("同人女",6);S.npcTrust["同人女"]=5;S.rumors=[{id:"doujin",title:"同人社编外人员",heard:true,response:"clarify",callbacks:[]}];return graduationCardData();})()');
- assert.equal(v.version,"0.6.2");assert.equal(v.stats.length,5);assert(v.routine.includes("基础复盘"));assert(v.relationships[0].includes("同人女"));assert.deepEqual(v.rumors,["同人社编外人员"]);assert(v.closing.length>20);
+ assert.equal(v.version,"0.6.3");assert.equal(v.stats.length,5);assert(v.routine.includes("基础复盘"));assert(v.relationships[0].includes("同人女"));assert.deepEqual(v.rumors,["同人社编外人员"]);assert(v.closing.length>20);
 });
 console.log(passed+" regression groups passed.");

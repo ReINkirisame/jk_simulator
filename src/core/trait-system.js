@@ -6,6 +6,7 @@ function traitSystemState(){
  if(!Array.isArray(S.hiddenTraits))S.hiddenTraits=[];
  if(!S.hiddenTraitSources||typeof S.hiddenTraitSources!=="object")S.hiddenTraitSources={};
  if(!Array.isArray(S.fusionHistory))S.fusionHistory=[];
+ if(!Array.isArray(S.traitPromotions))S.traitPromotions=[];
  if(!S.traitChoiceState||typeof S.traitChoiceState!=="object")S.traitChoiceState={};
  const state=S.traitChoiceState;
  if(!Number.isFinite(state.misses))state.misses=0;
@@ -49,7 +50,8 @@ function getVisibleTraitBadges(){
   if(!progressive.has(name))return {label:name,className:"",title:""};
   const journey=traitJourney(name),locked=sourceTraitLocked(name)?journey.fusedInto:null;
   const next=getTraitLevel(name)>=3?"已到当前上限":`距下一级还差 ${TRAIT_LEVEL_THRESHOLDS[getTraitLevel(name)]-journey.xp} 次跨月使用`;
-  return {label:`${name} Lv.${getTraitLevel(name)}`,className:"progress-trait",title:locked?`已参与合成【${locked}】，社交由隐藏特质接管，普通活动仍可使用；不能再次作为合成素材。`:`${next}；同一特质每月最多成长一次。`};
+  const pending=(S.traitPromotions||[]).filter(item=>item.trait===name&&!item.offered&&!item.superseded).map(item=>`Lv.${item.level}新选项等待合适场景`).join("；");
+  return {label:`${name} Lv.${getTraitLevel(name)}`,className:"progress-trait",title:(locked?`已参与合成【${locked}】，社交由隐藏特质接管，普通活动仍可使用；不能再次作为合成素材。`:`${next}；同一特质每月最多成长一次。`)+(pending?" "+pending:"")};
  });
  const hidden=activeHiddenTraitNames().map(name=>({label:`${name} · 隐藏`,className:"hidden-trait",title:HIDDEN_TRAITS[name]?.desc||"角色型隐藏特质"}));
  return [...selected,...hidden];
@@ -78,7 +80,8 @@ function chooseFreshTraitTemplate(templates){
 function chooseTraitCandidate(candidates){
  const state=traitSystemState();
  const alternatives=candidates.filter(candidate=>candidate.set.id!==state.lastSetId);
- const picked=randomItem(alternatives.length?alternatives:candidates);
+ const pending=candidates.filter(candidate=>candidate.promotion).sort((a,b)=>a.promotion.index-b.promotion.index||a.promotion.level-b.promotion.level);
+ const picked=pending[0]||randomItem(alternatives.length?alternatives:candidates);
  state.lastSetId=picked?.set.id||null;
  return picked;
 }
@@ -159,7 +162,11 @@ function recordTraitUse(name,context={},check={grade:"success"},template={style:
    journey.months.push(key);journey.xp+=1;S.traitProgress[name]=journey.xp;
    const newLevel=getTraitLevel(name);
    log(`【${name}】留下了一次跨月成长记录（${journey.xp}）。`);
-   if(newLevel>oldLevel)rememberImpact(`trait-level:${name}:${newLevel}`,`常规特质【${name}】提升到 Lv.${newLevel}`);
+   if(newLevel>oldLevel){
+    S.traitPromotions.filter(item=>item.trait===name&&!item.offered).forEach(item=>{item.superseded=true;});
+    S.traitPromotions.push({trait:name,level:newLevel,index:S.calendarIndex,offered:false});
+    rememberImpact(`trait-level:${name}:${newLevel}`,`常规特质【${name}】提升到 Lv.${newLevel}，下次合适的场景优先展示新选项`);
+   }
   }
  }
  return journey;
@@ -167,6 +174,11 @@ function recordTraitUse(name,context={},check={grade:"success"},template={style:
 
 // 兼容旧调试调用；正式选项统一走 recordTraitUse。
 function advanceTraitProgress(set,context={}){return recordTraitUse(set.trait,context,{grade:"success"},{style:"general"});}
+
+function traitPromotionFeedback(name,oldLevel){
+ const level=getTraitLevel(name);
+ return level>oldLevel?`\n\n【特质成长】${name} Lv.${oldLevel} → Lv.${level}。下次符合条件的场景会优先出现刚解锁的选项。${level===3?"普通活动专属行动的判定额外+1。":""}成长不免除行动代价。`:"";
+}
 
 function applyTraitChoiceCost(set,check,template={}){
  Object.entries(template.cost||set.cost||{}).forEach(([key,value])=>changeResource(key,value,`【${set.trait}】的行动代价`));
@@ -182,6 +194,7 @@ function traitActivityStats(set,context={}){
 
 const TRAIT_CHOICE_RESOLVERS={
  traitNpc(set,template,context){
+  const oldLevel=getTraitLevel(set.trait);
   const npcName=context.npc;ensureNpc(npcName,1);
   const check=traitCheck(set,npcName,context),delta=(set.relation||{})[check.grade]??0;
   if(delta)changeRelation(npcName,delta,`【${set.trait}】判定`);
@@ -191,9 +204,10 @@ const TRAIT_CHOICE_RESOLVERS={
   applyTraitChoiceCost(set,check,template);
   const state=traitSystemState();state.recentChoiceIds.push(template.id);state.recentChoiceIds=state.recentChoiceIds.slice(-4);
   rememberChoice(context.eventId||`trait:${set.id}`,template.id,template.label,set.tags||[],`对${npcName}使用了【${set.trait}】选项（${check.gradeLabel}）`);
-  return `${template.result}\n\n${traitReactionText(set.trait,npcName,check.grade)}\n\n${formatCheck(check)}`;
+  return `${template.result}\n\n${traitReactionText(set.trait,npcName,check.grade)}\n\n${formatCheck(check)}`+traitPromotionFeedback(set.trait,oldLevel);
  },
  traitActivity(set,template,context){
+  const oldLevel=getTraitLevel(set.trait);
   const domain=context.activityDomain;
   const {targetStat,checkStat}=traitActivityStats(set,context);
   // 精密检查依活动使用相关能力；其他特质仍须以自己的方法承担判定风险。
@@ -235,7 +249,7 @@ const TRAIT_CHOICE_RESOLVERS={
   const domainLabel={study:"学习",project:"项目",music:"音乐练习",performance:"表演",competition:"竞赛",creation:"创作"}[domain]||domain;
   rememberChoice(context.eventId||`trait:${set.id}`,template.id,template.label,set.tags||[],`在${domainLabel}中实践【${set.trait}】（${check.gradeLabel}）`);
   const reaction=great?"这套方法完成了预定内容，还留下了一点额外余量。":success?"方法确实奏效了，代价也由这次活动实际支付。":check.grade==="setback"?"只完成了部分练习，尚未达到可直接采用的标准。投入的时间没有退回，但过程留下了经验。":"尝试没有达到目标。你得自己承担精力与返工压力，特质不会替失败免单。";
-  return `${template.result}\n\n${reaction}\n${effects.join("；")}。\n\n${formatCheck(check)}`;
+  return `${template.result}\n\n${reaction}\n${effects.join("；")}。\n\n${formatCheck(check)}`+traitPromotionFeedback(set.trait,oldLevel);
  }
 };
 
@@ -248,7 +262,8 @@ function traitChoicePreview(set,template={},context={}){
  if(typeof applicableTraitProfiles==="function"){
   const stat=set.resolver==="traitActivity"?traitActivityStats(set,context).checkStat:set.stat||"expression";
   const paid=S.traitBenefits?.months?.[monthKey()]?.costs||[];
-  const extra=applicableTraitProfiles(stat,context.activityDomain||"social",context).filter(profile=>profile.cost&&!paid.includes(profile.name));
+  const selected=traitActivityContributors(stat,context.activityDomain||"social",context);
+  const extra=[...selected.positive,...selected.negative].filter(profile=>profile.cost&&!paid.includes(profile.name));
   if(extra.length)parts.push("本月首次加成另付："+extra.map(profile=>profile.name+Object.entries(profile.cost).map(([key,value])=>`${{energy:"精力",stress:"压力",cash:"零花钱"}[key]}${formatSigned(value)}`).join("、")).join("；"));
  }
  parts.push("大失败压力+3"+(set.mode==="battle"?"，冲刺大失败再+2":"")+" · 特别成功压力-2");
@@ -269,14 +284,19 @@ function injectTraitChoices(baseChoices,context={}){
   if(!activeTraitForSet(set,context)||!contextHasTags(context,set.requiredTags||[]))return null;
   const templates=availableTraitTemplates(set,context);
   const slots=choices.map((choice,index)=>({meta:choice[3]||{},index})).filter(({meta})=>meta.replaceable===true&&!meta.protected&&!meta.disabled&&(set.replaceRoles||[]).includes(meta.role));
-  return templates.length&&slots.length?{set,templates,slots}:null;
+  const promotion=(S.traitPromotions||[]).find(p=>!p.offered&&!p.superseded&&p.trait===set.trait&&templates.some(t=>(t.minLevel||1)===p.level));
+  return templates.length&&slots.length?{set,templates:promotion?templates.filter(t=>(t.minLevel||1)===promotion.level):templates,slots,promotion}:null;
  }).filter(Boolean);
  if(!candidates.length)return choices;
  const candidate=chooseTraitCandidate(candidates);
- if(!shouldOfferTraitChoice(candidate.set,context))return choices;
+ if(!shouldOfferTraitChoice(candidate.set,{...context,forceTraitChoice:context.forceTraitChoice||Boolean(candidate.promotion)}))return choices;
  const template=chooseFreshTraitTemplate(candidate.templates),slot=randomItem(candidate.slots).index,replaced=choices[slot];
  choices[slot]=buildInjectedTraitChoice(candidate.set,template,context);
  choices[slot][3].replacedId=replaced[3]?.id||String(slot);choices[slot][3].replacedLabel=replaced[0];
+ if(candidate.promotion){
+  choices[slot][0]+=" · 新解锁";choices[slot][3].newUnlock=true;
+  candidate.promotion.offered=true;candidate.promotion.eventId=context.eventId;candidate.promotion.choiceId=template.id;
+ }
  return choices;
 }
 

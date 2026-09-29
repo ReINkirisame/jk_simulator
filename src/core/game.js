@@ -49,6 +49,8 @@ function runFixedMonth(i,done){
  if(i>=list.length){done();return}
  const e=list[i];
  if(typeof e.condition==="function"&&!e.condition()){runFixedMonth(i+1,done);return;}
+ const callback=fixedChoiceCallback(e);
+ if(callback){runStoryEvent(callback,()=>runFixedMonth(i+1,done));return;}
  const eventId=e.id||`fixed:${S.term}:${S.month}:${i}`;
  const context={eventId,...activityEventContext(e)};
  const rawChoices=typeof e.getChoices==="function"?e.getChoices():e.choices;
@@ -305,6 +307,7 @@ function exploreCampus(mode){
  }
  const companion=S.npcs[0]||"主人公";ensureNpc(companion,1);changeRelation(companion,1,"一起熟悉校园");
  S.flags.campusRumours=true;
+ S.flags.campusCompanion=companion;
  return `${companion}带你走了几条最常用的路线，还告诉你哪一层的饮水机最少排队。以后在校园里碰见她，你们会自然地并排走一段。`;
 }
 
@@ -472,10 +475,12 @@ function clubWeek(next){
  const stat=clubSkill(club);
  const domain=club==="音乐社"?"music":["话剧社","街舞社","广播站"].includes(club)?"performance":club==="篮球社"?"competition":club==="辩论社"?"study":"creation";
  const choices=scene[1].map((c,index)=>[c[0],c[1],()=>{
-  gainExperience(index===0?stat:"expression",2,"社团活动周");changeResource("energy",index===0?-7:-3);
+  const check=index===0&&club!=="归宅部"?activityCheck(stat,"社团活动周 · "+club,7,[],null,{activityDomain:domain,sceneCategory:"club"}):null;
+  gainExperience(index===0?stat:"expression",check?(check.margin>=0?2:1):2,"社团活动周");changeResource("energy",index===0?-7:-3);
   if(index===0)S.flags.clubCommitment=(S.flags.clubCommitment||0)+1;else changeResource("stress",-3);
-  return typeof c[2]==="function"?c[2]():c[1];
- },{id:`club-${index}`,role:index===0?domain:"safe",replaceable:index===0&&club!=="归宅部",protected:index!==0,preview:index===0?`精力-7 · ${ATTRIBUTES[stat].label}经验+2`:`精力-3 · 压力-3 · 表达经验+2`}]);
+  const text=check&&check.margin<0?"这次尝试还没达到可直接采用的标准。社员留下了需要补练的部分，你也记下了一个具体的问题。":typeof c[2]==="function"?c[2]():c[1];
+  return text+(check?"\n\n"+formatCheck(check):"");
+ },{id:`club-${index}`,role:index===0?domain:"safe",replaceable:index===0&&club!=="归宅部",protected:index!==0,preview:index===0?`精力-7 · ${ATTRIBUTES[stat].label}经验+${club==="归宅部"?"2":"1～2（依判定）"}`:`精力-3 · 压力-3 · 表达经验+2`}]);
  showChoices("固定事件 · 5月","社团活动周 · "+club,scene[0],choices,typeof next==="function"?next:()=>{},{eventId:"club-week:"+club,allowTraitChoices:!["归宅部","志愿者协会"].includes(club),activityDomain:domain,skill:stat,sceneCategory:"club",musicAllowed:club==="音乐社"});
  return "HANDLED";
 }
@@ -508,6 +513,7 @@ function runRoute(done){
 
 function runRandom(slot,done){
   if(typeof done!=="function")done=()=>{};
+  if(slot===0&&tryAnnualTraitDay(done))return;
 
   if(slot===0){
     const unused=Object.keys(NPCS).filter(n=>!S.npcs.includes(n));
